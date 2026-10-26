@@ -1,0 +1,41 @@
+erDiagram
+    USERS ||--o{ AUTH_SESSIONS : authenticates
+    USERS ||--o{ OAUTH_CODES : authorizes
+    USERS ||--o| SUBSCRIPTIONS : opts_into
+    USERS {
+        text id PK
+        text login_key_hash UK
+        boolean active
+    }
+    AUTH_SESSIONS {
+        text id PK
+        text user_id FK
+        text kind
+        text token_hash UK
+        text refresh_hash UK
+        text client_id
+        text resource
+        text scope
+        text expires_at
+        text refresh_expires_at
+    }
+    OAUTH_CODES {
+        text hash PK
+        text user_id FK
+        text client_id
+        text redirect_uri
+        text challenge
+        text resource
+        text scope
+        text expires_at
+    }
+    SUBSCRIPTIONS {
+        text id PK
+        text user_id FK,UK
+        text callback_url
+        text secret_cipher
+        text previous_secret_cipher
+        text previous_secret_until
+        text expires_at
+        text verified_at
+    }

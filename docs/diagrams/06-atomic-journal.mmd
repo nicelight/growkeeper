@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant C as ChatGPT / пользователь
+    participant W as close_issue
+    participant D as D1 batch transaction
+    C->>W: issue_id, expected_version, request_id, outcome, refs
+    W->>D: Перечитать Issue и связанные записи
+    D-->>W: Факты, попытки, планы, гипотезы
+    W->>W: Проверить подтверждение, evidence и даты
+    alt Наблюдений результата нет
+        W->>W: Разрешён UNKNOWN, не NO_IMPROVEMENT
+    end
+    W->>W: Сформировать итог и два интервала времени
+    W->>D: BEGIN batch
+    D->>D: Conditional close Issue + closure_key
+    D->>D: INSERT unique ISSUE_OUTCOME
+    D->>D: ACTIVE hypotheses → INCONCLUSIVE
+    D->>D: Незавершённые experiments/followups → CANCELLED
+    alt Любой statement завершился ошибкой
+        D->>D: ROLLBACK всей batch
+        D-->>W: Ошибка, Issue не закрыт
+    else Успех
+        D->>D: COMMIT
+        D-->>W: Issue + Journal
+        W-->>C: Итог с постоянными ссылками
+    end
+    C->>W: Повтор того же request_id
+    W->>D: Найти уже созданный результат
+    W-->>C: Тот же Journal, без дубликата

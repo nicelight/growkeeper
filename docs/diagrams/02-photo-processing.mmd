@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant U as Пользователь
+    participant C as ChatGPT + Skill
+    participant W as Worker
+    participant D as D1
+    participant R as R2
+    U->>C: Новая фотография / подпись
+    C->>W: ingest_photo(host file reference)
+    W->>R: Сохранить оригинал
+    W->>D: Pending input + photo metadata
+    W-->>C: input_id, photo_id
+    C->>W: get_plants + get_photo_images
+    W->>R: Прочитать текущий и trusted reference
+    W-->>C: Реальные image content blocks
+    C->>C: Сопоставить объект, окружение, ракурс
+    C->>W: resolve_input(candidate, score, refs, conflicts)
+    alt Недостаточная уверенность / противоречие
+        W-->>C: needs_confirmation, без привязки
+        C->>U: Это растение X или другое?
+        U->>C: Уточнение
+        C->>W: resolve_input(confirmed)
+    else Порог и trusted reference соблюдены
+        W->>D: Привязать input + photo к plant
+    end
+    C->>U: На фото вижу PlantName
+    C->>W: get_case_file + get_comparison_set
+    W-->>C: Текущие кейсы, journal, отобранные photo IDs
+    C->>W: get_photo_images(current + older)
+    W-->>C: Изображения с датами / оговорками
+    C->>C: Сравнить, не путать факт и гипотезу
+    C->>W: add_observation + уточнение гипотез + followup
+    W->>D: Проверить и сохранить
+    C->>U: Краткий вывод и следующий шаг

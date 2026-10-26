@@ -1,0 +1,126 @@
+erDiagram
+    USERS ||--o{ PLANTS : owns
+    USERS ||--o{ INPUTS : owns
+    USERS ||--o| USER_SETTINGS : configures
+    PLANTS o|--o{ INPUTS : resolves
+    INPUTS ||--o| PHOTOS : carries
+    PLANTS o|--o{ PHOTOS : identifies
+    PLANTS ||--o{ ISSUES : tracks
+    PLANTS ||--o{ OBSERVATIONS : records
+    ISSUES o|--o{ OBSERVATIONS : groups
+    ISSUES ||--o{ HYPOTHESES : investigates
+    ISSUES ||--o{ EXPERIMENTS : tests
+    HYPOTHESES o|--o{ EXPERIMENTS : motivates
+    PLANTS ||--o{ FOLLOWUPS : schedules
+    ISSUES o|--o{ FOLLOWUPS : links
+    EXPERIMENTS o|--o{ FOLLOWUPS : evaluates
+    PLANTS ||--o{ JOURNAL_ENTRIES : remembers
+    ISSUES o|--o| JOURNAL_ENTRIES : concludes_once
+    OBSERVATIONS }o..o{ PHOTOS : photo_ids_json
+    HYPOTHESES }o..o{ OBSERVATIONS : observation_ids_json
+    USERS {
+        text id PK
+        text display_name
+        boolean active
+    }
+    USER_SETTINGS {
+        text user_id PK,FK
+        real recognition_threshold
+        text timezone
+    }
+    PLANTS {
+        text id PK
+        text user_id FK
+        text display_name
+        text kind
+        boolean name_confirmed
+        integer version
+        boolean deleting
+    }
+    INPUTS {
+        text id PK
+        text user_id FK
+        text plant_id FK
+        text text
+        text status
+        text resolution_method
+        real recognition_score
+    }
+    PHOTOS {
+        text id PK
+        text input_id FK,UK
+        text plant_id FK
+        text r2_key UK
+        text sha256
+        text captured_at
+        text received_at
+        text view_tag
+        text area_tag
+        boolean is_reference
+    }
+    OBSERVATIONS {
+        integer seq PK
+        text id UK
+        text plant_id FK
+        text issue_id FK
+        text source
+        text text
+        text photo_ids_json
+        text caveats
+    }
+    ISSUES {
+        integer seq PK
+        text id UK
+        text plant_id FK
+        text title
+        text status
+        text outcome
+        integer version
+        text closure_key
+        text result_observed_at
+    }
+    HYPOTHESES {
+        integer seq PK
+        text id UK
+        text issue_id FK
+        text status
+        text reasoning
+        text conclusion
+        text observation_ids_json
+        integer version
+    }
+    EXPERIMENTS {
+        integer seq PK
+        text id UK
+        text issue_id FK
+        text hypothesis_id FK
+        text change_text
+        text success_criteria
+        text status
+        text started_at
+        text evaluate_at
+        integer version
+    }
+    FOLLOWUPS {
+        integer seq PK
+        text id UK
+        text plant_id FK
+        text issue_id FK
+        text experiment_id FK
+        text due_at
+        text status
+        text lease_until
+        integer attempts
+        text last_error
+    }
+    JOURNAL_ENTRIES {
+        integer seq PK
+        text id UK
+        text plant_id FK
+        text issue_id FK,UK
+        text entry_type
+        text summary
+        text outcome
+        real duration_days
+        real time_to_result_days
+    }

@@ -1,0 +1,26 @@
+stateDiagram-v2
+    state "Issue" as ISSUE {
+        [*] --> OPEN
+        OPEN --> OPEN: новые факты / пересмотр гипотез
+        OPEN --> RESOLVED: наблюдаемый результат + согласие
+        OPEN --> CLOSED_NO_RESULT: NO_IMPROVEMENT или UNKNOWN + согласие
+        RESOLVED --> [*]
+        CLOSED_NO_RESULT --> [*]
+    }
+    state "Experiment" as EXPERIMENT {
+        [*] --> PLANNED
+        PLANNED --> ACTIVE: пользователь выполнил изменение
+        PLANNED --> CANCELLED: отказ / закрытие Issue
+        ACTIVE --> COMPLETED: зафиксирован результат проверки
+        ACTIVE --> CANCELLED: прекращение / закрытие Issue
+        COMPLETED --> [*]
+        CANCELLED --> [*]
+    }
+    note right of RESOLVED
+        Результат не доказывает причину.
+        Issue и гипотеза не одно и то же.
+    end note
+    note right of ACTIVE
+        Не более одного ACTIVE на plant.
+        started_at — фактическое время.
+    end note

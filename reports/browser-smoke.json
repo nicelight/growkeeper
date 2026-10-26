@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "count": 10,
+  "checks": [
+    "two plants render from domain-generated fixture",
+    "settings form calls host and reflects saved threshold",
+    "plant case shows issues and scheduled followups",
+    "entity link opens hypothesis details with source links",
+    "closed issue journal renders uncertainty and elapsed days",
+    "photo selection opens side-by-side viewer",
+    "empty unresolved inbox is explicit",
+    "empty followup list does not imply completed work",
+    "390px mobile settings has no horizontal overflow",
+    "no unhandled JavaScript errors during navigation"
+  ],
+  "mode": "offline widget with mocked window.openai bridge; fixtures from real SQLite domain handlers",
+  "live_browser_http": "not run: container Chromium blocks localhost navigation with ERR_BLOCKED_BY_ADMINISTRATOR",
+  "real_chatgpt": false,
+  "real_cloudflare": false
+}

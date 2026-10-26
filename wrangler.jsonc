@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "growkeeper",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-11-25",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://growkeeper.natureonzoom.win",
+    "OAUTH_REDIRECT_URIS": "https://chatgpt.com/connector_platform_oauth_redirect",
+    "FILE_DOWNLOAD_HOSTS": "files.oaiusercontent.com",
+    "EVENT_WEBHOOK_HOSTS": "chatgpt.com",
+    "EVENTS_ENABLED": "true"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "growkeeper_26",
+      "database_id": "223fac64-f737-49e2-9cea-af6d6c6605df",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "growkeeper-photos-26"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "*/50 * * * *"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "growkeeper.natureonzoom.win",
+      "custom_domain": true
+    }
+  ],
+  "workers_dev": false
+}

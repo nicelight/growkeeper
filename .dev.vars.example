@@ -1,0 +1,2 @@
+# Generate once: node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+APP_SECRET=REPLACE_WITH_64_RANDOM_HEX_CHARACTERS

@@ -1,0 +1,397 @@
+TAP version 13
+# (node:2678) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: tenant isolation applies to plants, pending inputs and photos
+ok 1 - tenant isolation applies to plants, pending inputs and photos
+  ---
+  duration_ms: 22.683585
+  type: 'test'
+  ...
+# Subtest: unknown fields and UUID spoofing are rejected before SQL
+ok 2 - unknown fields and UUID spoofing are rejected before SQL
+  ---
+  duration_ms: 3.89412
+  type: 'test'
+  ...
+# Subtest: create retries reuse UUID without duplicate plant
+ok 3 - create retries reuse UUID without duplicate plant
+  ---
+  duration_ms: 6.21158
+  type: 'test'
+  ...
+# Subtest: optimistic version check prevents lost rename
+ok 4 - optimistic version check prevents lost rename
+  ---
+  duration_ms: 6.165561
+  type: 'test'
+  ...
+# Subtest: pending text survives clarification and cannot be diagnosed under another plant
+ok 5 - pending text survives clarification and cannot be diagnosed under another plant
+  ---
+  duration_ms: 7.36085
+  type: 'test'
+  ...
+# Subtest: one existing plant does not silently bind an unknown photo
+ok 6 - one existing plant does not silently bind an unknown photo
+  ---
+  duration_ms: 6.215365
+  type: 'test'
+  ...
+# Subtest: visual identity threshold is backend enforced and never seeds trusted guesses
+ok 7 - visual identity threshold is backend enforced and never seeds trusted guesses
+  ---
+  duration_ms: 9.500788
+  type: 'test'
+  ...
+# Subtest: conflicting signals override a high identity score
+ok 8 - conflicting signals override a high identity score
+  ---
+  duration_ms: 8.105165
+  type: 'test'
+  ...
+# Subtest: high score without trusted reference still asks the user
+ok 9 - high score without trusted reference still asks the user
+  ---
+  duration_ms: 5.520022
+  type: 'test'
+  ...
+# Subtest: settings range/timezone checked and persisted independently per user
+ok 10 - settings range/timezone checked and persisted independently per user
+  ---
+  duration_ms: 22.78918
+  type: 'test'
+  ...
+# Subtest: same photo cannot silently switch plants
+ok 11 - same photo cannot silently switch plants
+  ---
+  duration_ms: 8.79451
+  type: 'test'
+  ...
+# Subtest: unprocessed assignment can be corrected, processed cannot silently move
+ok 12 - unprocessed assignment can be corrected, processed cannot silently move
+  ---
+  duration_ms: 7.395271
+  type: 'test'
+  ...
+# Subtest: unknown capture time stays unknown, actual photo pixels are returned
+ok 13 - unknown capture time stays unknown, actual photo pixels are returned
+  ---
+  duration_ms: 5.782949
+  type: 'test'
+  ...
+# Subtest: photo byte/format validation and idempotency conflicts
+ok 14 - photo byte/format validation and idempotency conflicts
+  ---
+  duration_ms: 5.098242
+  type: 'test'
+  ...
+# Subtest: import rejects SSRF/private/unlisted hosts before outbound request
+ok 15 - import rejects SSRF/private/unlisted hosts before outbound request
+  ---
+  duration_ms: 4.211947
+  type: 'test'
+  ...
+# Subtest: file import uses bounded bytes and no redirects; repeats same source id
+ok 16 - file import uses bounded bytes and no redirects; repeats same source id
+  ---
+  duration_ms: 27.459902
+  type: 'test'
+  ...
+# Subtest: signed media capability works and rejects tamper, expiration, other user and deletion
+ok 17 - signed media capability works and rejects tamper, expiration, other user and deletion
+  ---
+  duration_ms: 10.558956
+  type: 'test'
+  ...
+# Subtest: photo references cannot cross tenant or plant; comparisons need two distinct photos
+ok 18 - photo references cannot cross tenant or plant; comparisons need two distinct photos
+  ---
+  duration_ms: 8.434059
+  type: 'test'
+  ...
+# Subtest: comparison selects older matching views and excludes other plants/newer/different framing
+ok 19 - comparison selects older matching views and excludes other plants/newer/different framing
+  ---
+  duration_ms: 14.574955
+  type: 'test'
+  ...
+# Subtest: hypothesis update touches case version and needs evidence conclusion
+ok 20 - hypothesis update touches case version and needs evidence conclusion
+  ---
+  duration_ms: 6.649112
+  type: 'test'
+  ...
+# Subtest: experiments start PLANNED; real start requires user and time; only one active
+ok 21 - experiments start PLANNED; real start requires user and time; only one active
+  ---
+  duration_ms: 7.323936
+  type: 'test'
+  ...
+# Subtest: terminal experiment cannot be restarted and completion needs observed result
+ok 22 - terminal experiment cannot be restarted and completion needs observed result
+  ---
+  duration_ms: 5.797049
+  type: 'test'
+  ...
+# Subtest: closure atomically creates journal and cancels pending investigations
+ok 23 - closure atomically creates journal and cancels pending investigations
+  ---
+  duration_ms: 5.78433
+  type: 'test'
+  ...
+# Subtest: resolved closure records time-to-result separately from time-to-closure
+ok 24 - resolved closure records time-to-result separately from time-to-closure
+  ---
+  duration_ms: 5.624215
+  type: 'test'
+  ...
+# Subtest: missing evidence cannot be mislabeled improvement or treatment failure
+ok 25 - missing evidence cannot be mislabeled improvement or treatment failure
+  ---
+  duration_ms: 3.176264
+  type: 'test'
+  ...
+# Subtest: stale closure cannot write journal after newer observation
+ok 26 - stale closure cannot write journal after newer observation
+  ---
+  duration_ms: 3.277342
+  type: 'test'
+  ...
+# Subtest: journal insert failure rolls back issue closure and dependent cancellation
+ok 27 - journal insert failure rolls back issue closure and dependent cancellation
+  ---
+  duration_ms: 3.340525
+  type: 'test'
+  ...
+# Subtest: closed issue rejects new observations and hypotheses
+ok 28 - closed issue rejects new observations and hypotheses
+  ---
+  duration_ms: 4.575472
+  type: 'test'
+  ...
+# Subtest: followup reads do not deliver; competing claims excluded; ack is NOT DONE
+ok 29 - followup reads do not deliver; competing claims excluded; ack is NOT DONE
+  ---
+  duration_ms: 4.35039
+  type: 'test'
+  ...
+# Subtest: journal pagination and literal wildcard search do not cross plants
+ok 30 - journal pagination and literal wildcard search do not cross plants
+  ---
+  duration_ms: 4.341898
+  type: 'test'
+  ...
+# Subtest: plant deletion requires exact confirmation and removes R2 + relational data
+ok 31 - plant deletion requires exact confirmation and removes R2 + relational data
+  ---
+  duration_ms: 4.843837
+  type: 'test'
+  ...
+# Subtest: reusing a create UUID for different content is a conflict, including a race
+ok 32 - reusing a create UUID for different content is a conflict, including a race
+  ---
+  duration_ms: 2.93621
+  type: 'test'
+  ...
+# Subtest: concurrent conflicting photo bytes cannot overwrite the winning R2 object
+ok 33 - concurrent conflicting photo bytes cannot overwrite the winning R2 object
+  ---
+  duration_ms: 3.235
+  type: 'test'
+  ...
+# Subtest: failed R2 deletion keeps a retryable tombstone and blocks subsequent writes
+ok 34 - failed R2 deletion keeps a retryable tombstone and blocks subsequent writes
+  ---
+  duration_ms: 3.944995
+  type: 'test'
+  ...
+# Subtest: concurrent repeated closure produces one immutable journal outcome
+ok 35 - concurrent repeated closure produces one immutable journal outcome
+  ---
+  duration_ms: 4.191998
+  type: 'test'
+  ...
+# Subtest: simultaneous different closure requests cannot create two outcomes
+ok 36 - simultaneous different closure requests cannot create two outcomes
+  ---
+  duration_ms: 4.324493
+  type: 'test'
+  ...
+# (node:2679) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: event subscriptions validate callback before storing and encrypt secrets
+ok 37 - event subscriptions validate callback before storing and encrypt secrets
+  ---
+  duration_ms: 38.245241
+  type: 'test'
+  ...
+# Subtest: bad challenge or private callback cannot create a subscription
+ok 38 - bad challenge or private callback cannot create a subscription
+  ---
+  duration_ms: 5.270985
+  type: 'test'
+  ...
+# Subtest: event dispatcher sends one signed event then marks NOTIFIED, never DONE
+ok 39 - event dispatcher sends one signed event then marks NOTIFIED, never DONE
+  ---
+  duration_ms: 8.627253
+  type: 'test'
+  ...
+# {"component":"events","followup_id":"f1c5e89b-2e08-40c1-bdab-c7c0cd31a7de","code":"WEBHOOK_DELIVERY","attempts":1}
+# {"component":"events","followup_id":"f1c5e89b-2e08-40c1-bdab-c7c0cd31a7de","code":"WEBHOOK_DELIVERY","attempts":2}
+# Subtest: delivery failure backs off; retries keep stable event ID and do not mark delivered
+ok 40 - delivery failure backs off; retries keep stable event ID and do not mark delivered
+  ---
+  duration_ms: 8.782492
+  type: 'test'
+  ...
+# {"component":"events","followup_id":"b89af81e-4966-49b7-8586-ed16d2eeeea3","code":"DELIVERY_STOPPED","attempts":1}
+# Subtest: HTTP 410 stops delivery by removing subscription
+ok 41 - HTTP 410 stops delivery by removing subscription
+  ---
+  duration_ms: 5.546611
+  type: 'test'
+  ...
+# Subtest: expired/revoked subscriptions and disabled events produce no outbound calls
+ok 42 - expired/revoked subscriptions and disabled events produce no outbound calls
+  ---
+  duration_ms: 7.202207
+  type: 'test'
+  ...
+# Subtest: only one callback monitor per user; retries refresh the same subscription
+ok 43 - only one callback monitor per user; retries refresh the same subscription
+  ---
+  duration_ms: 4.761305
+  type: 'test'
+  ...
+# Subtest: secret rotation dual-signs during grace window, then uses only the new secret
+ok 44 - secret rotation dual-signs during grace window, then uses only the new secret
+  ---
+  duration_ms: 12.321479
+  type: 'test'
+  ...
+# Subtest: expired subscription is not dispatched or silently renewed
+ok 45 - expired subscription is not dispatched or silently renewed
+  ---
+  duration_ms: 5.147614
+  type: 'test'
+  ...
+# Subtest: disabled account stops native delivery without depending on token expiry
+ok 46 - disabled account stops native delivery without depending on token expiry
+  ---
+  duration_ms: 9.400982
+  type: 'test'
+  ...
+# (node:2685) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: health/public metadata are available, private API and MCP require auth
+ok 47 - health/public metadata are available, private API and MCP require auth
+  ---
+  duration_ms: 42.978926
+  type: 'test'
+  ...
+# Subtest: local key login makes HttpOnly Lax cookie; bad key rejected
+ok 48 - local key login makes HttpOnly Lax cookie; bad key rejected
+  ---
+  duration_ms: 10.406311
+  type: 'test'
+  ...
+# Subtest: production cookie is Secure and __Host scoped
+ok 49 - production cookie is Secure and __Host scoped
+  ---
+  duration_ms: 10.554169
+  type: 'test'
+  ...
+# Subtest: browser writes require Origin; cross-origin and bearer-to-UI rejected
+ok 50 - browser writes require Origin; cross-origin and bearer-to-UI rejected
+  ---
+  duration_ms: 10.83721
+  type: 'test'
+  ...
+# Subtest: valid PKCE authorization exchange works and code cannot be replayed
+ok 51 - valid PKCE authorization exchange works and code cannot be replayed
+  ---
+  duration_ms: 12.907211
+  type: 'test'
+  ...
+# Subtest: OAuth wrong verifier/resource/client rejected without consuming a valid code
+ok 52 - OAuth wrong verifier/resource/client rejected without consuming a valid code
+  ---
+  duration_ms: 16.512275
+  type: 'test'
+  ...
+# Subtest: OAuth redirect and PKCE downgrade are not allowed
+ok 53 - OAuth redirect and PKCE downgrade are not allowed
+  ---
+  duration_ms: 6.396271
+  type: 'test'
+  ...
+# Subtest: denied OAuth includes issuer and no authorization code
+ok 54 - denied OAuth includes issuer and no authorization code
+  ---
+  duration_ms: 9.533557
+  type: 'test'
+  ...
+# Subtest: refresh token rotation invalidates old refresh AND old access token
+ok 55 - refresh token rotation invalidates old refresh AND old access token
+  ---
+  duration_ms: 9.682266
+  type: 'test'
+  ...
+# Subtest: revocation and disabled account stop access
+ok 56 - revocation and disabled account stop access
+  ---
+  duration_ms: 10.470175
+  type: 'test'
+  ...
+# Subtest: MCP legacy initialization and stateless tools calls work
+ok 57 - MCP legacy initialization and stateless tools calls work
+  ---
+  duration_ms: 12.603764
+  type: 'test'
+  ...
+# Subtest: modern MCP discover requires/returns protocol metadata
+ok 58 - modern MCP discover requires/returns protocol metadata
+  ---
+  duration_ms: 6.846874
+  type: 'test'
+  ...
+# Subtest: modern header mismatch/unsupported protocol produces specified errors
+ok 59 - modern header mismatch/unsupported protocol produces specified errors
+  ---
+  duration_ms: 7.053218
+  type: 'test'
+  ...
+# Subtest: malformed JSON/unknown methods are JSON-RPC errors, tool validation is isError
+ok 60 - malformed JSON/unknown methods are JSON-RPC errors, tool validation is isError
+  ---
+  duration_ms: 6.780296
+  type: 'test'
+  ...
+# Subtest: top-level file parameter contract, render/data separation and resource digest
+ok 61 - top-level file parameter contract, render/data separation and resource digest
+  ---
+  duration_ms: 4.577566
+  type: 'test'
+  ...
+# Subtest: MCP image response carries bytes, UI resource contains no login token
+ok 62 - MCP image response carries bytes, UI resource contains no login token
+  ---
+  duration_ms: 9.172225
+  type: 'test'
+  ...
+# Subtest: HTML user strings are escaped, entity links require login
+ok 63 - HTML user strings are escaped, entity links require login
+  ---
+  duration_ms: 5.343492
+  type: 'test'
+  ...
+1..63
+# tests 63
+# suites 0
+# pass 63
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 337.223455

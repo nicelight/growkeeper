@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant H as ChatGPT OAuth client
+    participant B as Browser
+    participant W as GrowKeeper Worker
+    participant D as D1
+    H->>W: Protected-resource / AS discovery
+    H->>B: authorize(client_id, redirect, resource, S256 challenge, state)
+    B->>W: Вход личным ключом в веб-форме
+    W->>D: Проверить hash и active user
+    W-->>B: HttpOnly browser cookie
+    B->>W: Явное согласие на OAuth
+    W->>D: Одноразовый code hash + challenge
+    W-->>H: redirect(code, state, iss)
+    H->>W: token(code, verifier, resource)
+    W->>D: Атомарно употребить code
+    W-->>H: access token + refresh token
+    H->>W: /mcp с bearer
+    W->>D: Проверить user, scope, resource, expires
+    W-->>H: Только данные этого пользователя
+    H->>W: Refresh
+    W->>D: Rotate access и refresh hashes
+    H->>W: Revoke
+    W->>D: Отозвать session и monitor subscription

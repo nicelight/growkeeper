@@ -1,0 +1,20 @@
+flowchart TD
+    User["Пользователь: текст / фото"] --> Chat["ChatGPT + GrowKeeper Skill\nReasoning и Vision"]
+    Chat --> MCP["MCP /mcp\nOAuth bearer"]
+    User --> Web["Standalone Web UI\nCookie + Origin"]
+    Chat --> Widget["Встроенный UI\nwindow.openai bridge"]
+    Widget --> MCP
+    Web --> API["Web API /api/tools/*"]
+    subgraph CF["Cloudflare: один Worker"]
+        MCP --> Tools["Единый каталог tools + schemas"]
+        API --> Tools
+        Tools --> Domain["Доменная логика\nВладелец, связи, версии, переходы"]
+        Cron["Cron: каждые 15 минут"] --> Delivery["Optional event dispatcher\nLease + signature + retries"]
+    end
+    Domain --> DB[("D1: состояние + auth + journal")]
+    Domain --> R2[("R2: приватные оригиналы")]
+    Delivery --> DB
+    Delivery -->|"Только после подписки"| Callback["Проверенный callback ChatGPT"]
+    Callback --> Chat
+    Tools -->|"Реальные старые и новые изображения"| Chat
+    Chat -->|"Короткий ответ + ссылки"| User

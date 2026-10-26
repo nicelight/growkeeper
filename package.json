@@ -1,0 +1,22 @@
+{
+  "name": "growkeeper",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "A private longitudinal plant journal and ChatGPT MCP plugin on Workers, D1 and R2.",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "dev": "node --experimental-sqlite scripts/dev.mjs",
+    "test": "node --experimental-sqlite --test test/*.test.mjs",
+    "check": "node scripts/check.mjs",
+    "build": "node scripts/build.mjs",
+    "verify": "npm run build && npm run check && npm test",
+    "user:create": "node scripts/create-user.mjs",
+    "plugin:configure": "node scripts/configure-plugin.mjs",
+    "test:ui": "python3 scripts/browser-smoke.py",
+    "diagrams": "node scripts/diagrams.mjs"
+  },
+  "license": "UNLICENSED"
+}
