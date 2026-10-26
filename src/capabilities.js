@@ -1,6 +1,8 @@
+import {feedbackStatus} from './feedback.js';
 import {VERSION} from './version.js';
 import {monitoringStatus} from './monitoring.js';
 export const FEATURES=[
+ {id:'feedback',description:'Отзывы, пожелания, предложения и жалобы разработчику в Telegram.',tools:['get_feedback_status','send_feedback','get_feedback_report'],requires:['Согласие пользователя на конкретное краткое содержание и настроенный бот.'],limitations:['Подтверждение Telegram не означает, что разработчик прочитал сообщение; при неопределённой доставке нет автоматического повтора.']},
  {id:'collection',description:'Карточки растений, грядок и групп; имена, профили и история.',tools:['get_plants','create_plant','update_plant','name_plant']},
  {id:'zones',description:'Плоские физические зоны, привязка растения/грядки/группы к одной зоне. Управление через чат.',tools:['create_zone','update_zone','assign_plant_zone'],limitations:['Нет вложенного дерева стеллажей и полок; группа не содержит дочерние карточки.']},
  {id:'photos',description:'Приватный фотоархив, реальные изображения для сравнения и подтверждённые эталоны.',tools:['ingest_photo','label_photo','get_photo_images','get_comparison_set'],limitations:['Импорт зависит от передачи файла хостом; JPEG/PNG/WebP до 10 MiB.']},
@@ -15,7 +17,7 @@ export const FEATURES=[
 export async function getCapabilities(store,catalog){
  return {product:'GrowKeeper',version:VERSION,scope:'Только возможности этого плагина, не всего ChatGPT или устройства.',
   features:FEATURES,tool_catalog:catalog.map(t=>({name:t.name,read_only:!!t.readOnly,surface:t.appOnly?'app_only':'model_and_app'})),
-  runtime:{monitoring:await monitoringStatus(store)},
+  runtime:{monitoring:await monitoringStatus(store),feedback:feedbackStatus(store.env)},
   unsupported:['Управление насосами, светом и другим оборудованием','Непрерывное наблюдение без новых фото или данных','Автоматическое закрепление чата/установка ярлыка','Скрытое чтение всей переписки ChatGPT или сообщений других чатов','Вложенная иерархия зон и членство отдельных карточек в группе'],
   interpretation:'Сверяй возможности и ограничения перед обещанием. Реализация на сервере не означает наличие инструмента в текущем хосте. Если инструмента нет в доступном наборе, не выдумывай вызов и сообщи о несовпадении. Не выполняй изменения при ответе на справочный вопрос.'};
 }

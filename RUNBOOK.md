@@ -273,3 +273,6 @@ Apply `0002_monitoring_prompt.sql` before deploying code that reads monitoring s
 Apply `0003_shortcut_offer.sql` once before deploying shortcut-offer code (normally via D1 migrations). It adds nullable `shortcut_offered_at`; never records installation or changes subscription state.
 
 Apply `0004_collection_onboarding.sql` before collection-aware code. Additive/idempotent tables store flat zones, plant-zone links and one onboarding check-in. Only tool-recorded real user activity is visible to the Worker; the host must check fresh messages before proactive outreach. Zone management is currently through chat tools, not a separate UI editor.
+
+## Developer feedback
+Apply 0005_feedback.sql before feedback code. Configure FEEDBACK_BOT_TOKEN as a Cloudflare secret, never in Git; set FEEDBACK_CHAT_ID to the verified developer's numeric private chat ID after they start the bot. Until both are configured, sending is disabled. Never claim human receipt/read; only Telegram API acceptance is confirmed. Do not retry unknown outcomes or create replacement IDs. No token-bearing URL or report body logging. Reports are limited to five per account per rolling day.
