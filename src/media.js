@@ -39,8 +39,8 @@ export async function ingestPhoto(store,a) {
   const old=await store.first('SELECT id FROM photos WHERE source_file_id=? AND user_id=?',a.file.file_id,store.user.id);
   if(old)return store.get('photo',old.id);
   let url;
-  try{url=allowedURL(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,'FILE_HOST_NOT_ALLOWED');}
-  catch(e){console.warn(JSON.stringify({component:'photo-import',stage:'url_rejected',code:'FILE_HOST_NOT_ALLOWED',destination:urlDiagnostic(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS)}));throw e;}
+  try{url=allowedURL(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,'FILE_HOST_NOT_ALLOWED',true);}
+  catch(e){console.warn(JSON.stringify({component:'photo-import',stage:'url_rejected',code:'FILE_HOST_NOT_ALLOWED',destination:urlDiagnostic(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,true)}));throw e;}
   const response=await fetchWith(store.env,url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
   assert(response.ok,'PHOTO_DOWNLOAD_FAILED','Cannot download attachment. Get a fresh file URL and retry.',502);
   return savePhoto(store,a,await boundedBody(response,MAX_PHOTO_BYTES),a.file.file_id);

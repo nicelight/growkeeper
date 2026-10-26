@@ -80,10 +80,10 @@ export async function readJSON(request, max = 256*1024) {
   try { return JSON.parse(new TextDecoder().decode(await boundedBody(request,max))); }
   catch (e) { if (e instanceof AppError) throw e; throw new AppError('BAD_JSON','Malformed JSON.'); }
 }
-export function allowedURL(value, csv, code='HOST_NOT_ALLOWED') {
+export function allowedURL(value, csv, code='HOST_NOT_ALLOWED', allowSubdomains=false) {
   let u; try {u = new URL(value);} catch {throw new AppError(code,'Invalid URL.');}
   const allowed = String(csv||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-  assert(u.protocol === 'https:' && !u.username && !u.password && !u.hash && (!u.port || u.port === '443') && allowed.includes(u.hostname.toLowerCase()),
+  assert(u.protocol === 'https:' && !u.username && !u.password && !u.hash && (!u.port || u.port === '443') && hostAllowed(u.hostname,allowed,allowSubdomains),
     code, `Destination host is not allowlisted: ${u.hostname}`);
   return u.href;
 }
@@ -94,11 +94,16 @@ export const days = (start, end) => Math.round((Date.parse(end)-Date.parse(start
 export function asObject(s, fallback={}) {try {return JSON.parse(s);} catch {return fallback;}}
 
 // Only structural URL diagnostics. Never include credentials, path, query or fragment.
-export function urlDiagnostic(value, csv) {
+export function urlDiagnostic(value, csv, allowSubdomains=false) {
  if(typeof value!=='string')return {url_valid:false};
  let u;try{u=new URL(value);}catch{return {url_valid:false};}
  const hosts=String(csv||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
  return {url_valid:true,callback_host:u.hostname.slice(0,253),https:u.protocol==='https:',
   has_credentials:!!(u.username||u.password),has_fragment:!!u.hash,
-  port_allowed:!u.port||u.port==='443',host_allowed:hosts.includes(u.hostname.toLowerCase())};
+  port_allowed:!u.port||u.port==='443',host_allowed:hostAllowed(u.hostname,hosts,allowSubdomains)};
+}
+
+export function hostAllowed(host,allowed,allowSubdomains=false){
+ host=host.toLowerCase();
+ return allowed.some(entry=>entry===host||(allowSubdomains&&entry.startsWith('*.')&&entry.length>2&&host.endsWith('.'+entry.slice(2))&&host.length>entry.length-1));
 }
