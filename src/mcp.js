@@ -16,15 +16,19 @@ export async function mcpResponse(request,store,requestId){
  let input;try{input=await readJSON(request,512*1024);}catch(e){return rpcError(null,e.code==='BAD_JSON'?-32700:-32600,e.message,e.status||400);}
  if(!input||Array.isArray(input)||input.jsonrpc!=='2.0'||typeof input.method!=='string')return rpcError(input?.id,-32600,'Invalid JSON-RPC request.');
  const {method,id}=input,p=input.params||{};
- if(typeof p!=='object'||Array.isArray(p))return rpcError(id,-32602,'params must be an object.');
+ // Never log params: callback URLs and signing secrets are sensitive.
+ const eventMethod=['events/list','events/subscribe','events/unsubscribe'].includes(method);
+ if(eventMethod)console.info(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'received'}));
+ const reject=(id,code,message,status=400,data)=>{if(eventMethod)console.warn(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'rejected',code,reason:message}));return rpcError(id,code,message,status,data);};
+ if(typeof p!=='object'||Array.isArray(p))return reject(id,-32602,'params must be an object.');
  const version=request.headers.get('MCP-Protocol-Version')||p._meta?.['io.modelcontextprotocol/protocolVersion']||p.protocolVersion||'2025-11-25';
- if(!VERSIONS.includes(version))return rpcError(id,-32022,'Unsupported protocol version.',400,{supported:VERSIONS,requested:version});
- if(p._meta?.['io.modelcontextprotocol/protocolVersion']&&request.headers.get('MCP-Protocol-Version')&&p._meta['io.modelcontextprotocol/protocolVersion']!==request.headers.get('MCP-Protocol-Version'))return rpcError(id,-32020,'Protocol version/header mismatch.');
+ if(!VERSIONS.includes(version))return reject(id,-32022,'Unsupported protocol version.',400,{supported:VERSIONS,requested:version});
+ if(p._meta?.['io.modelcontextprotocol/protocolVersion']&&request.headers.get('MCP-Protocol-Version')&&p._meta['io.modelcontextprotocol/protocolVersion']!==request.headers.get('MCP-Protocol-Version'))return reject(id,-32020,'Protocol version/header mismatch.');
  const modern=version===MODERN;
  if(modern){
-  if(p._meta?.['io.modelcontextprotocol/protocolVersion']!==MODERN||!p._meta?.['io.modelcontextprotocol/clientCapabilities']||typeof p._meta['io.modelcontextprotocol/clientCapabilities']!=='object')return rpcError(id,-32602,'Modern requests require protocolVersion and clientCapabilities in params._meta.');
+  if(p._meta?.['io.modelcontextprotocol/protocolVersion']!==MODERN||!p._meta?.['io.modelcontextprotocol/clientCapabilities']||typeof p._meta['io.modelcontextprotocol/clientCapabilities']!=='object')return reject(id,-32602,'Modern requests require protocolVersion and clientCapabilities in params._meta.');
   const target=method==='tools/call'?p.name:method==='resources/read'?p.uri:null;
-  if(request.headers.get('MCP-Protocol-Version')!==MODERN||decodeHeader(request.headers.get('Mcp-Method'))!==method||(target&&decodeHeader(request.headers.get('Mcp-Name'))!==target))return rpcError(id,-32020,'Protocol metadata/header mismatch.');
+  if(request.headers.get('MCP-Protocol-Version')!==MODERN||decodeHeader(request.headers.get('Mcp-Method'))!==method||(target&&decodeHeader(request.headers.get('Mcp-Name'))!==target))return reject(id,-32020,'Protocol metadata/header mismatch.');
  }
  if(id===undefined){
   if(method==='notifications/initialized'||method==='notifications/cancelled')return new Response(null,{status:202});
@@ -52,10 +56,15 @@ export async function mcpResponse(request,store,requestId){
    case 'skills/list':result={skills:[skill]};break;
    case 'skills/get':
     if(p.uri!==SKILL_URI)return rpcError(id,-32002,'Unknown skill.',404);result={skill};break;
-   case 'events/list':case 'events/subscribe':case 'events/unsubscribe':result=await eventCall(store,method,p);break;
+   case 'events/list':case 'events/subscribe':case 'events/unsubscribe':
+    result=await eventCall(store,method,p);
+    console.info(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'complete'}));break;
    default:return rpcError(id,-32601,'Method not found.',404);
   }
   if(modern)result={...result,resultType:'complete',_meta:{...(result._meta||{}),'io.modelcontextprotocol/serverInfo':INFO}};
   return json({jsonrpc:'2.0',id,result});
- }catch(e){if(e.code==='WEBHOOK_VERIFICATION')return rpcError(id,-32015,e.message,400,e.details||{reason:'challenge_failed'});return rpcError(id,e.status===404?-32601:-32602,e instanceof AppError?e.message:'Internal MCP error.',e.status||500);}
+ }catch(e){
+  if(eventMethod)console.warn(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'failed',code:e instanceof AppError?e.code:'INTERNAL'}));
+  if(e.code==='WEBHOOK_VERIFICATION')return rpcError(id,-32015,e.message,400,e.details||{reason:'challenge_failed'});return rpcError(id,e.status===404?-32601:-32602,e instanceof AppError?e.message:'Internal MCP error.',e.status||500);
+ }
 }

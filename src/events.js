@@ -28,7 +28,8 @@ export async function eventCall(store,method,p){
  const oldSecret=existing?await unseal(store.env,existing.secret_cipher):null;
  const rotated=!!existing&&!same(oldSecret,p.delivery.secret);
  let verifiedAt=existing?.verified_at;
- if(!existing||rotated||Date.parse(verifiedAt)<Date.now()-300000){
+ // Verification belongs to a principal AND callback, never just the signing key.
+ if(!existing||existing.callback_url!==callback||rotated||!Number.isFinite(Date.parse(verifiedAt))||Date.parse(verifiedAt)<Date.now()-300000){
   const body=JSON.stringify({type:'verification',challenge});
   let r;try{r=await fetchWith(store.env,callback,{method:'POST',redirect:'error',headers:await signedHeaders(p.delivery.secret,body,uid(),id),body,signal:AbortSignal.timeout(10000)});}catch(e){throw new AppError('WEBHOOK_VERIFICATION','Callback verification could not complete.',502,{reason:e.name==='TimeoutError'?'timeout':'connection_failed'});}
   assert(r.ok,'WEBHOOK_VERIFICATION','Callback rejected verification.',502,{reason:'challenge_failed'});
