@@ -1,11 +1,12 @@
 /** Deliberately small synchronous JSON Streamable HTTP adapter; no sessions, SSE, sampling or tasks. */
+import {VERSION} from './version.js';
 import {assert,AppError,json,readJSON,origin} from './lib.js';
 import {toolDefinitions,callTool,toolError} from './tools.js';
 import {eventsEnabled,eventCall} from './events.js';
 import {SKILL_TEXT,SKILL_DIGEST,SKILL_FRONTMATTER} from './generated.js';
 export const MODERN='2026-07-28',VERSIONS=[MODERN,'2025-11-25','2025-06-18'];
-const INFO={name:'growkeeper',version:'0.2.0'},SKILL_URI='skill://growkeeper/growkeeper/SKILL.md',UI_URI='ui://growkeeper/journal.html';
-const INSTRUCTIONS='Use the growkeeper skill. Answer urgent questions before collection onboarding; read collection state and record real user activity. Resolve each input to its plant before diagnosis; retrieve actual image pixels for comparisons. Read existing cases/journal, distinguish observations from hypotheses, and never fabricate outcomes. No autonomous hardware actions. Web/skill setup and native events require user authorization. When a useful followup returns monitoring.should_offer=true, offer one GrowKeeper event subscription in natural language; do not wait for a special subscribe command. Respect declined/active status and record offers or refusals with record_monitoring_choice. After activation on Android, inspect monitoring.should_offer_shortcut and follow the skill for a one-time native home-screen shortcut suggestion.';
+const INFO={name:'growkeeper',version:VERSION},SKILL_URI='skill://growkeeper/growkeeper/SKILL.md',UI_URI='ui://growkeeper/journal.html';
+const INSTRUCTIONS='Use the growkeeper skill. Call get_capabilities whenever explaining capabilities, checking whether an action is supported, planning a workflow with uncertain support, or unsure about plugin limits; never infer support from the plugin name. Answer urgent questions before collection onboarding; read collection state and record real user activity. Resolve each input to its plant before diagnosis; retrieve actual image pixels for comparisons. Read existing cases/journal, distinguish observations from hypotheses, and never fabricate outcomes. No autonomous hardware actions. Web/skill setup and native events require user authorization. When a useful followup returns monitoring.should_offer=true, offer one GrowKeeper event subscription in natural language; do not wait for a special subscribe command. Respect declined/active status and record offers or refusals with record_monitoring_choice. After activation on Android, inspect monitoring.should_offer_shortcut and follow the skill for a one-time native home-screen shortcut suggestion.';
 const frontmatter=SKILL_FRONTMATTER;
 const skill={uri:SKILL_URI,frontmatter,resources:[{uri:SKILL_URI,digest:SKILL_DIGEST}]};
 function capabilities(env){return {tools:{},resources:{},extensions:{'io.modelcontextprotocol/skills':{}},...(eventsEnabled(env)?{events:{}}:{})};}

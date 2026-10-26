@@ -1,3 +1,4 @@
+import {VERSION} from './version.js';
 import {AppError,assert,json,readJSON,boundedBody,origin,uid} from './lib.js';
 import {Store,publicError} from './db.js';
 import {authenticate,authRoutes,checkOrigin,challenge} from './auth.js';
@@ -13,7 +14,7 @@ export default {
    const base=origin(env),url=new URL(request.url);
    assert(url.origin===base,'HOST_MISMATCH','Request host does not match PUBLIC_ORIGIN.',421);
    const auth=await authRoutes(request,env);if(auth)response=auth;
-   else if(url.pathname==='/healthz')response=json({ok:true,service:'growkeeper',version:'0.2.0'});
+   else if(url.pathname==='/healthz')response=json({ok:true,service:'growkeeper',version:VERSION});
    else if(url.pathname==='/robots.txt')response=new Response('User-agent: *\nDisallow: /\n');
    else if(url.pathname==='/mcp'){
     if(request.method!=='POST')response=new Response(null,{status:405,headers:{allow:'POST'}});
