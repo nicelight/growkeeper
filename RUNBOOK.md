@@ -266,3 +266,6 @@ SQL содержит персональные записи, хеши ключе�
 - [ ] backup и восстановление одного фото проверены.
 
 До этой приёмки не обещать пользователям автономные уведомления и production-ready сервис.
+
+## Monitoring opt-in offers
+Apply `0002_monitoring_prompt.sql` before deploying code that reads monitoring status. This additive, repeatable migration stores only offer/refusal preferences; it does not grant consent or modify subscriptions. Existing accounts default to no recorded offer. Native subscription creation still belongs to the host after explicit user consent.
