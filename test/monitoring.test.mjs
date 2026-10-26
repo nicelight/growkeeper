@@ -40,3 +40,17 @@ test('cancelled checks do not generate offers and migration is repeatable',async
  const fs=await import('node:fs/promises');await f.env.DB.exec(await fs.readFile(new URL('../migrations/0002_monitoring_prompt.sql',import.meta.url),'utf8'));
  assert.equal((await tool(f.store,'get_monitoring_status')).monitoring.state,'missing');
 }finally{f.close();}});
+
+test('shortcut offer appears only with active monitoring and is suppressed durably without granting consent',async()=>{const f=await fixture();try{
+ f.env.EVENTS_ENABLED='true';assert.equal((await tool(f.store,'get_monitoring_status')).monitoring.should_offer_shortcut,false);
+ f.env.OUTBOUND_FETCH=async(url,o)=>Response.json({challenge:JSON.parse(o.body).challenge});
+ await eventCall(f.store,'events/subscribe',{name:EVENT_NAME,arguments:{},delivery:{mode:'webhook',url:'https://chatgpt.com/private',secret:'whsec_'+base64(new Uint8Array(32).fill(9))}});
+ assert.equal((await tool(f.store,'get_monitoring_status')).monitoring.should_offer_shortcut,true);
+ await tool(f.store,'record_monitoring_choice',{choice:'declined'});
+ await tool(f.store,'record_monitoring_choice',{choice:'shortcut_offered'});
+ let m=(await tool(f.store,'get_monitoring_status')).monitoring;assert.equal(m.should_offer_shortcut,false);assert.equal(m.offer_declined,true);assert.equal(m.state,'active');
+ await tool(f.store,'record_monitoring_choice',{choice:'reset'});
+ await tool(f.store,'record_monitoring_choice',{choice:'shortcut_offered'});
+ assert.equal((await tool(f.store,'get_monitoring_status')).monitoring.should_offer_shortcut,false);
+ assert.equal(await f.otherStore.first('SELECT shortcut_offered_at FROM monitoring_preferences WHERE user_id=?',f.other.id),null);
+}finally{f.close();}});

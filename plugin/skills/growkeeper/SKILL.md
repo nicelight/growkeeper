@@ -30,6 +30,12 @@ After creating/rescheduling a meaningful followup, inspect the returned `monitor
 - If `expired`, explain renewal only when an offer is appropriate. If `disabled`, do not promise notifications or repeatedly prompt. Follow user quiet hours and timing preferences in the host monitor.
 - Pending checks are individual scheduled observations. A subscription alone does not create a recurring care plan; agree useful timing with the user and create/reschedule checks separately. Never run event and polling monitors simultaneously.
 
+## One-time quick access suggestion
+When monitoring is active and `monitoring.should_offer_shortcut` is true, and the user is using the ChatGPT Android app (or explicitly asks for Android steps), offer once:
+«Чтобы быстро возвращаться к растениям, добавь этот чат на рабочий стол: ⋮ справа вверху → Добавить на главный экран → Добавить на домашний экран».
+This native Android menu path was confirmed by the project owner on 2026-10-26. Menu wording can differ between versions. If absent, suggest long-pressing this chat in the chat list and choosing “Закрепить чат” instead. Do not claim you installed/pinned anything or that a plugin can control the phone launcher. Do not create a public Share link. Do not ask for a private conversation URL for this native flow.
+After actually showing the suggestion, call `record_monitoring_choice` with `shortcut_offered`. The flag records the suggestion, not successful installation; never repeat it automatically, including in another chat. For unknown platforms or web/desktop, omit this Android suggestion and do not mark it shown. Always answer an explicit later request for instructions even if already shown.
+
 ## Proactive host invocation
 Only when the user opted into one monitor: get due followups. If none, send nothing. For a scheduled polling host, claim each due item before messaging; acknowledge the lease after forming/delivering the request, never on read alone. Native events have already claimed and acknowledged receipt: do not claim them again. Combine due checks into a short message, naming each plant. Late answers remain useful; do not claim a photograph was taken on the planned due date. Do not run events and polling simultaneously.
 
