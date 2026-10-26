@@ -1,6 +1,6 @@
 /** Deliberately small synchronous JSON Streamable HTTP adapter; no sessions, SSE, sampling or tasks. */
 import {VERSION} from './version.js';
-import {assert,AppError,json,readJSON,origin} from './lib.js';
+import {assert,AppError,json,readJSON,origin,urlDiagnostic} from './lib.js';
 import {toolDefinitions,callTool,toolError} from './tools.js';
 import {eventsEnabled,eventCall} from './events.js';
 import {SKILL_TEXT,SKILL_DIGEST,SKILL_FRONTMATTER} from './generated.js';
@@ -12,15 +12,7 @@ const skill={uri:SKILL_URI,frontmatter,resources:[{uri:SKILL_URI,digest:SKILL_DI
 function capabilities(env){return {tools:{},resources:{},extensions:{'io.modelcontextprotocol/skills':{}},...(eventsEnabled(env)?{events:{}}:{})};}
 function rpcError(id,code,message,status=400,data){return json({jsonrpc:'2.0',id:id??null,error:{code,message,...(data?{data}:{})}},status);}
 function decodeHeader(value){if(value?.startsWith('=?base64?')&&value.endsWith('?=')){try{return new TextDecoder().decode(Uint8Array.from(atob(value.slice(9,-2)),c=>c.charCodeAt(0)));}catch{return null;}}return value;}
-// Only structural URL diagnostics. Never include credentials, path, query or fragment.
-export function callbackDiagnostic(value, csv) {
- if(typeof value!=='string')return {url_valid:false};
- let u;try{u=new URL(value);}catch{return {url_valid:false};}
- const hosts=String(csv||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
- return {url_valid:true,callback_host:u.hostname.slice(0,253),https:u.protocol==='https:',
-  has_credentials:!!(u.username||u.password),has_fragment:!!u.hash,
-  port_allowed:!u.port||u.port==='443',host_allowed:hosts.includes(u.hostname.toLowerCase())};
-}
+export {urlDiagnostic as callbackDiagnostic} from './lib.js';
 export async function mcpResponse(request,store,requestId){
  if(request.method!=='POST')return new Response(null,{status:405,headers:{allow:'POST'}});
  let input;try{input=await readJSON(request,512*1024);}catch(e){return rpcError(null,e.code==='BAD_JSON'?-32700:-32600,e.message,e.status||400);}
@@ -74,7 +66,7 @@ export async function mcpResponse(request,store,requestId){
   if(modern)result={...result,resultType:'complete',_meta:{...(result._meta||{}),'io.modelcontextprotocol/serverInfo':INFO}};
   return json({jsonrpc:'2.0',id,result});
  }catch(e){
-  if(eventMethod)console.warn(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'failed',code:e instanceof AppError?e.code:'INTERNAL',...(e.code==='WEBHOOK_HOST_NOT_ALLOWED'?{callback:callbackDiagnostic(p.delivery?.url,store.env.EVENT_WEBHOOK_HOSTS)}:{})}));
+  if(eventMethod)console.warn(JSON.stringify({component:'mcp-events',request_id:requestId,method,stage:'failed',code:e instanceof AppError?e.code:'INTERNAL',...(e.code==='WEBHOOK_HOST_NOT_ALLOWED'?{callback:urlDiagnostic(p.delivery?.url,store.env.EVENT_WEBHOOK_HOSTS)}:{})}));
   if(e.code==='WEBHOOK_VERIFICATION')return rpcError(id,-32015,e.message,400,e.details||{reason:'challenge_failed'});return rpcError(id,e.status===404?-32601:-32602,e instanceof AppError?e.message:'Internal MCP error.',e.status||500);
  }
 }

@@ -16,3 +16,11 @@ test('capability catalog is read-only, references real tools and matches release
  f.env.EVENTS_ENABLED='true';assert.equal((await tool(f.store,'get_capabilities')).runtime.monitoring.state,'missing');
  assert.equal(JSON.stringify(a).includes(f.env.APP_SECRET),false);
 }finally{f.close();}});
+test('photo import URL rejection logs structural diagnostics only',async t=>{const f=await fixture();const logs=[];t.mock.method(console,'warn',s=>logs.push(JSON.parse(s)));try{
+ const {ingestPhoto}=await import('../src/media.js');
+ await assert.rejects(ingestPhoto(f.store,{file:{file_id:'test-photo',download_url:'https://user:password@storage.example/private-photo?token=secretValue#privateFragment'}}),{code:'FILE_HOST_NOT_ALLOWED'});
+ assert.equal(logs[0].destination.callback_host,'storage.example');
+ assert.equal(logs[0].destination.has_credentials,true);
+ for(const secret of ['password','private-photo','token=','secretValue','privateFragment'])assert.equal(JSON.stringify(logs).includes(secret),false);
+ assert.equal((await f.store.first('SELECT COUNT(*) AS n FROM photos')).n,0);
+}finally{f.close();}});

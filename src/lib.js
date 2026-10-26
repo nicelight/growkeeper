@@ -92,3 +92,13 @@ export function htmlEscape(s='') {return String(s).replace(/[&<>"']/g,c=>({'&':'
 export function instant(s) {assert(typeof s==='string' && /T.*(?:Z|[+-]\d{2}:\d{2})$/.test(s) && Number.isFinite(Date.parse(s)), 'BAD_DATE','Supply an ISO timestamp with timezone.'); return new Date(s).toISOString();}
 export const days = (start, end) => Math.round((Date.parse(end)-Date.parse(start))/86400000*10)/10;
 export function asObject(s, fallback={}) {try {return JSON.parse(s);} catch {return fallback;}}
+
+// Only structural URL diagnostics. Never include credentials, path, query or fragment.
+export function urlDiagnostic(value, csv) {
+ if(typeof value!=='string')return {url_valid:false};
+ let u;try{u=new URL(value);}catch{return {url_valid:false};}
+ const hosts=String(csv||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+ return {url_valid:true,callback_host:u.hostname.slice(0,253),https:u.protocol==='https:',
+  has_credentials:!!(u.username||u.password),has_fragment:!!u.hash,
+  port_allowed:!u.port||u.port==='443',host_allowed:hosts.includes(u.hostname.toLowerCase())};
+}

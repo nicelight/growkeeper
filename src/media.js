@@ -1,4 +1,5 @@
 import {assert,AppError,uid,now,hash,instant,allowedURL,fetchWith,boundedBody,base64,mac,same,secret,origin,json} from './lib.js';
+import {urlDiagnostic} from './lib.js';
 export const MAX_PHOTO_BYTES=10*1024*1024;
 export function sniff(bytes) {
   if(bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)return 'image/jpeg';
@@ -37,7 +38,9 @@ export async function savePhoto(store,a,bytes,sourceFileId=null) {
 export async function ingestPhoto(store,a) {
   const old=await store.first('SELECT id FROM photos WHERE source_file_id=? AND user_id=?',a.file.file_id,store.user.id);
   if(old)return store.get('photo',old.id);
-  const url=allowedURL(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,'FILE_HOST_NOT_ALLOWED');
+  let url;
+  try{url=allowedURL(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,'FILE_HOST_NOT_ALLOWED');}
+  catch(e){console.warn(JSON.stringify({component:'photo-import',stage:'url_rejected',code:'FILE_HOST_NOT_ALLOWED',destination:urlDiagnostic(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS)}));throw e;}
   const response=await fetchWith(store.env,url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
   assert(response.ok,'PHOTO_DOWNLOAD_FAILED','Cannot download attachment. Get a fresh file URL and retry.',502);
   return savePhoto(store,a,await boundedBody(response,MAX_PHOTO_BYTES),a.file.file_id);
