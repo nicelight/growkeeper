@@ -38,7 +38,7 @@ export async function ingestPhoto(store,a) {
   const old=await store.first('SELECT id FROM photos WHERE source_file_id=? AND user_id=?',a.file.file_id,store.user.id);
   if(old)return store.get('photo',old.id);
   const url=allowedURL(a.file.download_url,store.env.FILE_DOWNLOAD_HOSTS,'FILE_HOST_NOT_ALLOWED');
-  const response=await fetchWith(store.env,url,{redirect:'error',signal:AbortSignal.timeout(15000)});
+  const response=await fetchWith(store.env,url,{redirect:'manual',signal:AbortSignal.timeout(15000)});
   assert(response.ok,'PHOTO_DOWNLOAD_FAILED','Cannot download attachment. Get a fresh file URL and retry.',502);
   return savePhoto(store,a,await boundedBody(response,MAX_PHOTO_BYTES),a.file.file_id);
 }

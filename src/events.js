@@ -31,7 +31,7 @@ export async function eventCall(store,method,p){
  // Verification belongs to a principal AND callback, never just the signing key.
  if(!existing||existing.callback_url!==callback||rotated||!Number.isFinite(Date.parse(verifiedAt))||Date.parse(verifiedAt)<Date.now()-300000){
   const body=JSON.stringify({type:'verification',challenge});
-  let r;try{r=await fetchWith(store.env,callback,{method:'POST',redirect:'error',headers:await signedHeaders(p.delivery.secret,body,uid(),id),body,signal:AbortSignal.timeout(10000)});}catch(e){throw new AppError('WEBHOOK_VERIFICATION','Callback verification could not complete.',502,{reason:e.name==='TimeoutError'?'timeout':'connection_failed'});}
+  let r;try{r=await fetchWith(store.env,callback,{method:'POST',redirect:'manual',headers:await signedHeaders(p.delivery.secret,body,uid(),id),body,signal:AbortSignal.timeout(10000)});}catch(e){throw new AppError('WEBHOOK_VERIFICATION','Callback verification could not complete.',502,{reason:e.name==='TimeoutError'?'timeout':'connection_failed'});}
   assert(r.ok,'WEBHOOK_VERIFICATION','Callback rejected verification.',502,{reason:'challenge_failed'});
   let echo;try{echo=JSON.parse(new TextDecoder().decode(await boundedBody(r,4096)));}catch{throw new AppError('WEBHOOK_VERIFICATION','Callback did not echo challenge.',502,{reason:'challenge_failed'});}
   assert(same(echo.challenge,challenge),'WEBHOOK_VERIFICATION','Callback challenge did not match.',502,{reason:'challenge_failed'});verifiedAt=now();
@@ -63,7 +63,7 @@ export async function dispatchDue(env){
     const old=await unseal(env,sub.previous_secret_cipher);
     headers['webhook-signature']+=' v1,'+await mac(secretBytes(old),`${eventId}.${headers['webhook-timestamp']}.${body}`);
    }
-   const response=await fetchWith(env,callback,{method:'POST',redirect:'error',headers,body,signal:AbortSignal.timeout(10000)});
+   const response=await fetchWith(env,callback,{method:'POST',redirect:'manual',headers,body,signal:AbortSignal.timeout(10000)});
    if(response.body)await response.body.cancel();
    if([410,413].includes(response.status)){
     await store.run('DELETE FROM subscriptions WHERE id=? AND user_id=?',sub.id,store.user.id);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {fixture} from './helpers.mjs';
 import {eventCall, EVENT_NAME} from '../src/events.js';
 import {base64, after} from '../src/lib.js';
-import {mcpResponse} from '../src/mcp.js';
+import {mcpResponse, callbackDiagnostic} from '../src/mcp.js';
 
 test('expired subscription with a new callback must verify the new destination', async () => {
   const f = await fixture();
@@ -11,6 +11,7 @@ test('expired subscription with a new callback must verify the new destination',
     f.env.EVENTS_ENABLED = 'true';
     const calls = [];
     f.env.OUTBOUND_FETCH = async (url, opts) => {
+      assert.equal(opts.redirect, 'manual');
       calls.push(url);
       return Response.json({challenge: JSON.parse(opts.body).challenge});
     };
@@ -63,4 +64,25 @@ test('modern event request rejected before dispatch has a safe diagnostic', asyn
     assert.equal(logs.at(-1).code,-32602);
     assert.equal(JSON.stringify(logs).includes('never-log-this'),false);
   } finally {f.close();}
+});
+
+
+test('callback diagnostics omit sensitive URL components and distinguish rejection causes', () => {
+ const d=callbackDiagnostic('http://user:password@callback.example:8080/private?token=secret#fragment','chatgpt.com');
+ assert.deepEqual(d,{url_valid:true,callback_host:'callback.example',https:false,has_credentials:true,has_fragment:true,port_allowed:false,host_allowed:false});
+ assert.deepEqual(callbackDiagnostic('not a URL with secret','chatgpt.com'),{url_valid:false});
+ assert.deepEqual(callbackDiagnostic({},'chatgpt.com'),{url_valid:false});
+ assert.equal(callbackDiagnostic('https://chatgpt.com:443/path','chatgpt.com').host_allowed,true);
+ assert.equal(callbackDiagnostic('https://chatgpt.com.attacker.example/path','chatgpt.com').host_allowed,false);
+});
+
+test('verification rejects redirect without following it or persisting subscription', async () => {
+ const f=await fixture();let calls=0;
+ try {
+  f.env.EVENTS_ENABLED='true';
+  f.env.OUTBOUND_FETCH=async (url, opts)=>{calls++;assert.equal(opts.redirect,'manual');return new Response(null,{status:302,headers:{location:'https://other.example/'}});};
+  await assert.rejects(eventCall(f.store,'events/subscribe',{name:EVENT_NAME,arguments:{},delivery:{mode:'webhook',url:'https://chatgpt.com/callback',secret:'whsec_'+base64(new Uint8Array(32).fill(9))}}),{code:'WEBHOOK_VERIFICATION'});
+  assert.equal(calls,1);
+  assert.equal(await f.store.first('SELECT * FROM subscriptions'),null);
+ } finally {f.close();}
 });
