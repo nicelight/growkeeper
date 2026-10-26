@@ -1,5 +1,5 @@
 import {assert,AppError,now,uid} from './lib.js';
-export const TABLES = Object.freeze({plant:'plants',input:'inputs',photo:'photos',observation:'observations',issue:'issues',hypothesis:'hypotheses',experiment:'experiments',followup:'followups',journal:'journal_entries'});
+export const TABLES = Object.freeze({zone:'zones',plant:'plants',input:'inputs',photo:'photos',observation:'observations',issue:'issues',hypothesis:'hypotheses',experiment:'experiments',followup:'followups',journal:'journal_entries'});
 const PREFIX={observation:'O',issue:'I',hypothesis:'H',experiment:'E',followup:'F',journal:'J'};
 export class Store {
   constructor(env, user) {this.env=env;this.db=env.DB;this.user=user;}

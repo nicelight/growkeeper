@@ -18,7 +18,7 @@ export async function listPlants(store) {
 }
 export async function createPlant(store,a) {
   const stamp=now(); const plant=await store.insert('plant',{display_name:a.display_name,name_source:a.name_source,name_confirmed:a.name_confirmed?1:0,kind:a.kind,profile:a.profile||'',created_at:stamp,updated_at:stamp},a.id);
-  return {plant,announcement:a.name_source==='generated'?`Можем назвать эти растения «${plant.display_name}», или предложи свой вариант.`:null};
+  return {plant,announcement:a.name_source==='generated'?`Назову «${plant.display_name}»; если хочешь, переименуем.`:null};
 }
 export async function updatePlant(store,a) {
   return {plant:await store.change('plant',a.id,a.expected_version,{display_name:a.display_name,profile:a.profile,name_source:'user',name_confirmed:1})};

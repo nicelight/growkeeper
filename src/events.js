@@ -1,6 +1,8 @@
 /** Optional native MCP Events delivery. Disabled until explicitly enabled and subscribed by the host. */
 import {assert,AppError,allowedURL,fetchWith,seal,unseal,unbase64,hash,mac,uid,now,after,same,origin,boundedBody} from './lib.js';
 import {Store} from './db.js';
+import {collectionStatus,daytime,nextDaytime} from './collection.js';
+import {settings} from './domain.js';
 import {claimFollowup,ackFollowup} from './domain.js';
 export const EVENT_NAME='growkeeper.followup_due';
 export const eventsEnabled=env=>env.EVENTS_ENABLED==='true';
@@ -48,6 +50,16 @@ export async function dispatchDue(env){
  let delivered=0,failed=0;
  for(const item of due){
   const store=new Store(env,{id:item.user_id});let claimed;
+  const onboarding=await collectionStatus(store);
+  if(onboarding.checkin_id===item.id){
+   if(onboarding.checkin_sent_at||['answered','declined'].includes(onboarding.stage)){
+    await store.run("UPDATE followups SET status='CANCELLED',version=version+1,updated_at=? WHERE id=? AND user_id=? AND status='PENDING'",now(),item.id,store.user.id);continue;
+   }
+   const timezone=(await settings(store)).timezone;
+   if(!daytime(new Date(),timezone)){
+    await store.run("UPDATE followups SET next_attempt_at=? WHERE id=? AND user_id=? AND status='PENDING'",nextDaytime(now(),timezone),item.id,store.user.id);continue;
+   }
+  }
   try{claimed=await claimFollowup(store,item.id);}catch(e){if(e.code==='LEASE_UNAVAILABLE')continue;throw e;}
   const {followup:f,lease_token}=claimed;
   try{
@@ -70,7 +82,9 @@ export async function dispatchDue(env){
     throw new AppError('DELIVERY_STOPPED',`HTTP ${response.status}; subscription removed. Reconfigure before retrying.`,502);
    }
    assert(response.ok,'WEBHOOK_DELIVERY',`Callback HTTP ${response.status}.`,502);
-   await ackFollowup(store,{id:f.id,lease_token});delivered++;
+   await ackFollowup(store,{id:f.id,lease_token});
+   if(onboarding.checkin_id===f.id)await store.run('UPDATE collection_onboarding SET checkin_sent_at=?,updated_at=? WHERE user_id=?',now(),now(),store.user.id);
+   delivered++;
   }catch(e){
    failed++;const attempts=f.attempts+1;
    const error=e instanceof AppError?`${e.code}: ${e.message}`:'DELIVERY_FAILED: outbound failure; no response body logged';

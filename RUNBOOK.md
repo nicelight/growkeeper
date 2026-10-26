@@ -271,3 +271,5 @@ SQL содержит персональные записи, хеши ключе�
 Apply `0002_monitoring_prompt.sql` before deploying code that reads monitoring status. This additive, repeatable migration stores only offer/refusal preferences; it does not grant consent or modify subscriptions. Existing accounts default to no recorded offer. Native subscription creation still belongs to the host after explicit user consent.
 
 Apply `0003_shortcut_offer.sql` once before deploying shortcut-offer code (normally via D1 migrations). It adds nullable `shortcut_offered_at`; never records installation or changes subscription state.
+
+Apply `0004_collection_onboarding.sql` before collection-aware code. Additive/idempotent tables store flat zones, plant-zone links and one onboarding check-in. Only tool-recorded real user activity is visible to the Worker; the host must check fresh messages before proactive outreach. Zone management is currently through chat tools, not a separate UI editor.
