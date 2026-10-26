@@ -86,3 +86,5 @@ test('verification rejects redirect without following it or persisting subscript
   assert.equal(await f.store.first('SELECT * FROM subscriptions'),null);
  } finally {f.close();}
 });
+
+ test('approved connector host verifies while lookalike hosts remain blocked',async()=>{const f=await fixture();try{f.env.EVENTS_ENABLED='true';f.env.EVENT_WEBHOOK_HOSTS='chatgpt.com,connectors.api.openai.com';let calls=0;f.env.OUTBOUND_FETCH=async(url,opts)=>{calls++;return Response.json({challenge:JSON.parse(opts.body).challenge});};const p={name:EVENT_NAME,arguments:{},delivery:{mode:'webhook',url:'https://connectors.api.openai.com/callback',secret:'whsec_'+base64(new Uint8Array(32).fill(9))}};await eventCall(f.store,'events/subscribe',p);assert.equal(calls,1);await assert.rejects(eventCall(f.store,'events/subscribe',{...p,delivery:{...p.delivery,url:'https://connectors.api.openai.com.attacker.example/callback'}}),{code:'WEBHOOK_HOST_NOT_ALLOWED'});assert.equal(calls,1);}finally{f.close();}});

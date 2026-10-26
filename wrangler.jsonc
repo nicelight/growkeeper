@@ -15,7 +15,7 @@
     "PUBLIC_ORIGIN": "https://growkeeper.natureonzoom.win",
     "OAUTH_REDIRECT_URIS": "https://chatgpt.com/connector_platform_oauth_redirect",
     "FILE_DOWNLOAD_HOSTS": "files.oaiusercontent.com",
-    "EVENT_WEBHOOK_HOSTS": "chatgpt.com",
+    "EVENT_WEBHOOK_HOSTS": "chatgpt.com,connectors.api.openai.com",
     "EVENTS_ENABLED": "true"
   },
   "d1_databases": [
