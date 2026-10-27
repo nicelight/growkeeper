@@ -9,7 +9,8 @@
     "run_worker_first": true
   },
   "observability": {
-    "enabled": true
+    "enabled": true,
+    "redact_query_string": true
   },
   "vars": {
     "PUBLIC_ORIGIN": "https://growkeeper.natureonzoom.win",

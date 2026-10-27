@@ -1,7 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "growkeeper",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Долговременное ведение растений: фотоархив, проверка гипотез, эксперименты и дневник результатов.",
-  "keywords": ["plants", "journal", "gardening", "hypotheses"]
+  "keywords": [
+    "plants",
+    "journal",
+    "gardening",
+    "hypotheses"
+  ],
+  "homepage": "https://growkeeper.natureonzoom.win/about",
+  "repository": "https://github.com/nicelight/growkeeper"
 }

@@ -1,3 +1,4 @@
+import {googleEnabled,googleRoutes,clearGoogleCookie} from './google-auth.js';
 import {assert,AppError,after,hash,randomToken,uid,now,json,origin,sha256url,same,htmlEscape,boundedBody} from './lib.js';
 const SCOPE='growkeeper';
 const CLIENT='growkeeper-chatgpt';
@@ -29,11 +30,16 @@ export async function loginSession(env,key) {
   assert(typeof key==='string'&&/^gk_[A-Za-z0-9_-]{43}$/.test(key),'UNAUTHORIZED','Invalid account key.',401);
   const user=await env.DB.prepare('SELECT id,display_name FROM users WHERE login_key_hash=? AND active=1').bind(await hash(key)).first();
   assert(user,'UNAUTHORIZED','Invalid account key.',401);
-  const token=randomToken();
-  await env.DB.prepare(`INSERT INTO auth_sessions(id,user_id,kind,token_hash,resource,scope,expires_at,created_at) VALUES(?,?,'browser',?,?,?,?,?)`)
-    .bind(uid(),user.id,await hash(token),resource(env),SCOPE,after(7*86400000),now()).run();
-  return {token,user};
+  return {token:await createBrowserSession(env,user.id),user};
 }
+export async function createBrowserSession(env,userId) {
+  const token=randomToken();
+  const inserted=await env.DB.prepare(`INSERT INTO auth_sessions(id,user_id,kind,token_hash,resource,scope,expires_at,created_at) SELECT ?,id,'browser',?,?,?,?,? FROM users WHERE id=? AND active=1 RETURNING id`)
+    .bind(uid(),await hash(token),resource(env),SCOPE,after(7*86400000),now(),userId).first();
+  assert(inserted,'UNAUTHORIZED','Account is disabled.',401);
+  return token;
+}
+
 function authParams(env,p) {
   assert(p.get('client_id')===CLIENT,'INVALID_CLIENT','Unknown OAuth client.');
   const redirect=p.get('redirect_uri');
@@ -48,7 +54,7 @@ function authParams(env,p) {
   assert((p.get('state')||'').length<=2000,'INVALID_STATE','State too large.');
   return {client_id:CLIENT,redirect_uri:redirect,resource:resource(env),scope:SCOPE,challenge:p.get('code_challenge'),state:p.get('state')};
 }
-const page=(title,body)=>new Response(`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${htmlEscape(title)}</title><link rel="stylesheet" href="/style.css"><body class="auth"><main class="auth-card"><div class="brand">GrowKeeper</div><h1>${htmlEscape(title)}</h1>${body}</main></body></html>`,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'none'; style-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"}});
+const page=(title,body,allowGoogle=false)=>new Response(`<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${htmlEscape(title)}</title><link rel="stylesheet" href="/style.css"><body class="auth"><main class="auth-card"><div class="brand">GrowKeeper</div><h1>${htmlEscape(title)}</h1>${body}<footer><p><a href="/privacy">Конфиденциальность</a> · <a href="/terms">Условия</a> · <a href="/support">Помощь</a></p></footer></main></body></html>`,{headers:{'content-type':'text/html;charset=utf-8','cache-control':'no-store','content-security-policy':`default-src 'none'; style-src 'self'; form-action 'self'${allowGoogle?' https://accounts.google.com':''}; base-uri 'none'; frame-ancestors 'none'`}});
 async function form(request) {
   assert((request.headers.get('content-type')||'').startsWith('application/x-www-form-urlencoded'),'CONTENT_TYPE','Use form encoding.',415);
   return new URLSearchParams(new TextDecoder().decode(await boundedBody(request,16384)));
@@ -56,10 +62,30 @@ async function form(request) {
 function returnPath(value) {return typeof value==='string'&&(/^\/oauth\/authorize\?/.test(value)||/^\/(?:entity|plant)\/[a-z0-9/-]+$/.test(value)||value==='/')?value:'/';}
 export async function authRoutes(request,env) {
   const url=new URL(request.url), path=url.pathname, base=origin(env);
+  try {
+    const google=await googleRoutes(request,env,{authenticate,createBrowserSession,checkOrigin,form,returnPath,setCookie});
+    if(google) return google;
+  } catch(error) {
+    if(!path.startsWith('/auth/google/')) throw error;
+    const response=page('Не удалось войти через Google','<p>Попробуйте ещё раз или войдите по личному ключу. Чтобы связать Google с существующим дневником, сначала войдите в него по ключу.</p><p><a href="/login">Вернуться ко входу</a></p>');
+    response.headers.set('set-cookie',clearGoogleCookie(env));
+    response.headers.set('referrer-policy','no-referrer');
+    return new Response(response.body,{status:error instanceof AppError?error.status:500,headers:response.headers});
+  }
   if(path==='/.well-known/oauth-protected-resource'||path==='/.well-known/oauth-protected-resource/mcp') return json({resource:resource(env),authorization_servers:[base],scopes_supported:[SCOPE],bearer_methods_supported:['header']});
   if(path==='/.well-known/oauth-authorization-server') return json({issuer:base,authorization_endpoint:base+'/oauth/authorize',token_endpoint:base+'/oauth/token',revocation_endpoint:base+'/oauth/revoke',response_types_supported:['code'],grant_types_supported:['authorization_code','refresh_token'],code_challenge_methods_supported:['S256'],token_endpoint_auth_methods_supported:['none'],scopes_supported:[SCOPE],authorization_response_iss_parameter_supported:true});
   if(path==='/login') {
-    if(request.method==='GET') return page('Вход в дневник',`<p>Введите личный ключ GrowKeeper, созданный владельцем сервера. Не отправляйте ключ в чат.</p><form method="post"><label>Ключ аккаунта<input name="key" type="password" autocomplete="current-password" required></label><input type="hidden" name="return_to" value="${htmlEscape(returnPath(url.searchParams.get('return_to')))}"><button type="submit">Войти</button></form>`);
+    if(request.method==='GET') {
+      let user=null;
+      try {user=await authenticate(request,env,true);} catch(e) {if(e.status!==401) throw e;}
+      const enabled=googleEnabled(env);
+      const linked=enabled&&user?await env.DB.prepare('SELECT subject FROM google_identities WHERE user_id=?').bind(user.id).first():null;
+      const googleForm=enabled?(linked?'<p>Google подключён.</p>':`<form method="post" action="/auth/google/${user?'link':'start'}"><input type="hidden" name="return_to" value="${htmlEscape(returnPath(url.searchParams.get('return_to')))}"><button type="submit">${user?'Связать этот дневник с Google':'Войти через Google'}</button></form><p>${user?'Связь сохранит растения и записи в этом дневнике.':'Уже есть дневник с личным ключом? Сначала войдите по ключу, затем свяжите Google на этой странице.'}</p>`):'';
+      const account=user?`<p>Ваш дневник: <strong>${htmlEscape(user.display_name)}</strong>.</p><p><a href="/">Вернуться в дневник</a></p>`:'';
+      const keyForm=user?'<form method="post" action="/logout"><button class="secondary" type="submit">Выйти</button></form>':`<p>Личный ключ тоже подойдёт. Не отправляйте его в чат.</p><form method="post"><label>Ключ аккаунта<input name="key" type="password" autocomplete="current-password" required></label><input type="hidden" name="return_to" value="${htmlEscape(returnPath(url.searchParams.get('return_to')))}"><button type="submit">Войти</button></form>`;
+      // Chrome enforces form-action across a POST's 303 redirect to Google.
+      return page(user?'Ваш аккаунт':'Вход в дневник',`${account}${url.searchParams.get('google')==='cancelled'?'<p>Вход отменён. Можно попробовать ещё раз.</p>':''}${googleForm}${keyForm}`,enabled);
+    }
     assert(request.method==='POST','METHOD','Method not allowed.',405);checkOrigin(request,env,true);
     const p=await form(request),{token}=await loginSession(env,p.get('key'));
     return new Response(null,{status:303,headers:{location:returnPath(p.get('return_to')),'set-cookie':setCookie(env,token),'cache-control':'no-store'}});

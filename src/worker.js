@@ -1,3 +1,4 @@
+import {productPage,PRODUCT_CSS} from './pages.js';
 import {VERSION} from './version.js';
 import {AppError,assert,json,readJSON,boundedBody,origin,uid} from './lib.js';
 import {Store,publicError} from './db.js';
@@ -14,6 +15,8 @@ export default {
    const base=origin(env),url=new URL(request.url);
    assert(url.origin===base,'HOST_MISMATCH','Request host does not match PUBLIC_ORIGIN.',421);
    const auth=await authRoutes(request,env);if(auth)response=auth;
+   else if(['/about','/privacy','/terms','/support'].includes(url.pathname))response=productPage(url.pathname,request.method);
+   else if(url.pathname==='/product.css'){assert(['GET','HEAD'].includes(request.method),'METHOD','Use GET or HEAD.',405);response=new Response(request.method==='HEAD'?null:PRODUCT_CSS,{headers:{'content-type':'text/css;charset=utf-8'}});}
    else if(url.pathname==='/healthz')response=json({ok:true,service:'growkeeper',version:VERSION});
    else if(url.pathname==='/robots.txt')response=new Response('User-agent: *\nDisallow: /\n');
    else if(url.pathname==='/mcp'){
@@ -44,7 +47,7 @@ export default {
     assert(['GET','HEAD'].includes(request.method),'METHOD','Use GET or HEAD.',405);
     const isPage=url.pathname==='/'||url.pathname==='/settings'||/^\/(entity|plant)\/[a-z0-9/-]+$/.test(url.pathname);
     if(isPage){
-     try{await authenticate(request,env,true);}catch(e){if(e.status!==401)throw e;response=new Response(null,{status:303,headers:{location:'/login?return_to='+encodeURIComponent(url.pathname)}});}
+     try{await authenticate(request,env,true);}catch(e){if(e.status!==401)throw e;response=url.pathname==='/'?productPage('/',request.method):new Response(null,{status:303,headers:{location:'/login?return_to='+encodeURIComponent(url.pathname)}});}
      if(!response)response=await env.ASSETS.fetch(new Request(base+'/index.html',{method:request.method}));
     }else if(['/style.css','/app.js','/widget.html','/favicon.svg'].includes(url.pathname))response=await env.ASSETS.fetch(request);
     else throw new AppError('NOT_FOUND','Not found.',404);
@@ -56,7 +59,7 @@ export default {
    response=json(body,e.status,e.status===401?{'WWW-Authenticate':challenge(env)}:{});
   }
   // Always wrap: Cloudflare asset responses can have immutable headers.
-  const h=new Headers(response.headers);h.set('x-request-id',requestId);h.set('x-content-type-options','nosniff');h.set('referrer-policy','same-origin');h.set('permissions-policy','camera=(), microphone=(), geolocation=()');
+  const h=new Headers(response.headers);h.set('x-request-id',requestId);h.set('x-content-type-options','nosniff');h.set('referrer-policy',new URL(request.url).pathname.startsWith('/auth/')?'no-referrer':'same-origin');h.set('permissions-policy','camera=(), microphone=(), geolocation=()');
   if(env.LOCAL_DEV!==true)h.set('strict-transport-security','max-age=31536000');
   if(!h.has('content-security-policy'))h.set('content-security-policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   h.set('cache-control','no-store');
