@@ -9,7 +9,7 @@ flowchart TD
         MCP --> Tools["Единый каталог tools + schemas"]
         API --> Tools
         Tools --> Domain["Доменная логика\nВладелец, связи, версии, переходы"]
-        Cron["Cron: каждые 15 минут"] --> Delivery["Optional event dispatcher\nLease + signature + retries"]
+        Cron["Cron: настроенное расписание"] --> Delivery["Optional event dispatcher\nLease + signature + retries"]
     end
     Domain --> DB[("D1: состояние + auth + journal")]
     Domain --> R2[("R2: приватные оригиналы")]

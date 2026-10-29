@@ -4,9 +4,8 @@
 
 | Tool | Режим | Назначение |
 |---|---|---|
-| `create_collection` | write | Create one matching zone + group for a user-described place or plant set, atomically. Keep unknown physical location explicit. Reuse existing IDs; never substitute a shelf with only a group. Assign individual cards to returned zone. Existing structure repair uses gardening_structure. |
-| `gardening_card` | write | Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Check names of card, shelf/zone and group; propose missing names and get approval. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion. |
-| `gardening_structure` | write | Inspect structure; if inconsistent offer optimization. After consent ask 1–2 main questions, confirm assumptions and missing names, then prepare a proposal. Apply only the exact user-approved stored plan. Pairs and assignments preserve IDs/history; no deletes, nesting or cross-zone groups. |
+| `gardening_card` | write | Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Consider missing card/group names and propose them when useful. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion. |
+| `gardening_structure` | write | Read or optimize groups and plant membership without replacing history. Prepare an exact atomic proposal, then apply after agreement. Questions and proposed missing names depend on context, not a fixed script. |
 | `get_feedback_status` | read | Check whether developer feedback delivery is configured; returns Telegram contact. Read-only. |
 | `send_feedback` | write | Send a user-approved short review, wish, suggestion or bug report to developer @dyingseed via Telegram. First show the summary and ask consent. No full conversation, photos, credentials or unrelated private details. Reuse id on retry; uncertain/pending outcomes must not be resent under a new ID. |
 | `get_feedback_report` | read | Read status of own feedback report, never resends it. sent means Telegram accepted, not that a human read it. |
@@ -17,13 +16,12 @@
 | `get_monitoring_status` | read | Read actual subscription readiness, expiry and whether a useful opt-in offer is appropriate. Never reveals callback or signing secrets. |
 | `record_monitoring_choice` | write | Record offered only when actually offering monitoring; declined only after user refusal; reset only on user request to reconsider. Record shortcut_offered only after showing the Android home-screen suggestion; it does not mean installation. This does NOT subscribe, unsubscribe or grant consent. |
 | `set_settings` | write | Change settings only at the user’s request. Recognition score is heuristic, not a calibrated probability. |
-| `create_zone` | write | Create a user-described physical area, e.g. balcony or upper shelf. Flat zones, no invented hierarchy. |
-| `update_zone` | write | Rename or describe a known zone; preserve its identity. |
-| `assign_plant_zone` | write | Assign an existing plant, bed or group to a user-described zone. clear=true removes only the location link. |
-| `name_plant` | write | Name or rename a plant/bed/group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity. |
+| `assign_plant_group` | write | Assign a plant to one group, or explicitly clear membership. Get expected_revision from get_plants or gardening_structure inspect. Does not copy history. |
+| `change_plant_type` | write | Change plant/group type preserving ID, photos and history. For plant to group explicitly clear its membership if present. For group with members first reassign/clear members or use one gardening_structure plan. |
+| `name_plant` | write | Name or rename a plant or group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity. |
 | `record_collection_progress` | write | Record real user activity and onboarding progress. Answer urgent question first; asked only after asking; answered after saving described collection; declined only after refusal. Activity cancels only the pending silence check. user_message_at is the actual user message timestamp, never a background wake. |
 | `schedule_collection_checkin` | write | Schedule ONE gentle check-in after 24h silence, 08:00-22:00 user timezone, only after answering immediate question and explicit proactive-care consent plus active subscription. Link the existing plant needing care. Never invent a plant or schedule repeated onboarding nudges. |
-| `create_plant` | write | Create a plant/bed/group. Offer one funny name; mark name_confirmed only when accepted. Reuse id on retry. |
+| `create_plant` | write | Create a plant or group. Offer one funny name; mark name_confirmed only when accepted. Reuse id on retry. |
 | `update_plant` | write | Rename a plant or edit its profile after user direction. Supply the version from the current entity. |
 | `record_input` | write | Persist unassigned text before resolving its plant. One logical subject per input; split a message about different plants. |
 | `get_pending_inputs` | read | Read unresolved text/photo inputs; never ask the user to re-upload a stored image. |
@@ -49,7 +47,8 @@
 | `get_case_file` | read | Read compact working state, recent photos and long-term journal for one plant. Truncation is explicit; use list_records for older history. Continue existing hypotheses, do not restart every day. |
 | `list_records` | read | Read paginated plant history. Journal search is a simple substring, not semantic/vector search. Follow next_offset; do not mistake one page for the whole history. |
 | `get_entity` | read | Read a specific entity including its stable authenticated HTTPS link and version. |
-| `delete_plant` | write / UI | Permanently delete a plant and its photos/history. Destructive: require explicit request and exact plant name. Retry resumes incomplete object deletion. |
+| `preview_delete_plant` | read | Read exact card, version and counts before permanent deletion. Ask the user to explicitly confirm this target and scope. Does not delete anything. |
+| `delete_plant` | write | Permanently delete exactly the card and own history/photos shown in preview_delete_plant, only after explicit user confirmation. Other cards remain. Use expected_revision from preview; conflict requires a fresh preview and confirmation. Retry resumes an incomplete R2 deletion. |
 | `open_growkeeper` | read | Open the interactive GrowKeeper journal/settings UI. Optionally focus an existing entity. Other data tools do not render widgets. |
 
 ## Ответ

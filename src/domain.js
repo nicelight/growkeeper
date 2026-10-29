@@ -2,6 +2,8 @@
  * Derived gardening memory is separate from these source records. */
 import {assert,AppError,uid,now,after,days,instant,asObject} from './lib.js';
 import {TABLES} from './db.js';
+import {groupFor} from './collection.js';
+import {memory,revision} from './gardening.js';
 
 export async function settings(store) {
   return await store.first('SELECT recognition_threshold,timezone,updated_at FROM user_settings WHERE user_id=?',store.user.id)
@@ -230,7 +232,8 @@ export async function records(store,a) {
   const rows=await store.all(`SELECT * FROM ${TABLES[a.type]} WHERE plant_id=? AND user_id=? ${search} ORDER BY ${order} DESC,id DESC LIMIT ? OFFSET ?`,...args);
   return {items:rows.slice(0,limit).map(r=>store.decorate(a.type,r)),next_offset:rows.length>limit?offset+limit:null};
 }
-export async function caseFile(store,a) {
+export async function caseFile(store,a,includeGroup=true) {
+  const start=includeGroup?await revision(store):null;
   const plant=await store.get('plant',a.plant_id),result={plant,settings:await settings(store),truncated:{}};
   for(const [type,name,condition] of [['issue','issues',"AND status='OPEN'"],['hypothesis','hypotheses',"AND issue_id IN(SELECT id FROM issues WHERE status='OPEN')"],['experiment','experiments',"AND status IN('ACTIVE','PLANNED')"],['followup','followups',"AND status IN('PENDING','NOTIFIED')"],['observation','observations',''],['journal','journal',''],['photo','photos','']]) {
     const limit=['observation','photo','journal'].includes(type)?12:40;
@@ -238,15 +241,40 @@ export async function caseFile(store,a) {
     const rows=await store.all(`SELECT * FROM ${TABLES[type]} WHERE user_id=? AND plant_id=? ${condition} ORDER BY ${order} DESC,id DESC LIMIT ?`,store.user.id,plant.id,limit+1);
     result[name]=rows.slice(0,limit).map(r=>store.decorate(type,r));result.truncated[name]=rows.length>limit;
   }
+  result.current_memory=await memory(store,plant.id);
+  if(includeGroup){const group=await groupFor(store,plant.id);result.group_context=group?(await caseFile(store,{plant_id:group.id},false)).case_file:null;
+    result.group_context_policy='Shared context, not copied plant facts. Individual exceptions take precedence; group plans do not prove individual actions. Current membership does not establish historical membership.';
+    if(plant.kind==='group')result.members=await store.all('SELECT p.id,p.display_name FROM plants p JOIN plant_groups g ON g.plant_id=p.id AND g.user_id=p.user_id WHERE g.group_id=? AND g.user_id=? AND p.deleting=0',plant.id,store.user.id);
+  }
+  if(includeGroup)assert(start===await revision(store),'CONFLICT','Card or group changed during reading. Reload.',409);
   return {case_file:result};
 }
+/** Preview destructive scope; execution reuses the R2-safe tombstone path with consent and revision checks. */
+export async function previewPlantDeletion(store,a) {
+  const revision=await store.first('SELECT revision FROM gardening_revisions WHERE user_id=?',store.user.id);
+  const plant=await store.first('SELECT * FROM plants WHERE id=? AND user_id=?',a.plant_id,store.user.id);
+  assert(plant,'NOT_FOUND','Card not found.',404);
+  const counts={};
+  for(const [type,table] of Object.entries(TABLES))if(type!=='plant')
+    counts[type]=(await store.first(`SELECT COUNT(*) AS n FROM ${table} WHERE plant_id=? AND user_id=?`,plant.id,store.user.id)).n;
+  counts.memory_versions=(await store.first('SELECT COUNT(*) AS n FROM card_memory_versions WHERE plant_id=? AND user_id=?',plant.id,store.user.id)).n;
+  counts.members=(await store.first('SELECT COUNT(*) AS n FROM plant_groups WHERE group_id=? AND user_id=?',plant.id,store.user.id)).n;
+  const after=await store.first('SELECT revision FROM gardening_revisions WHERE user_id=?',store.user.id);
+  assert(after.revision===revision.revision,'CONFLICT','Data changed during preview. Read it again.',409);
+  return {plant:store.decorate('plant',plant),expected_revision:revision.revision,counts,
+    effect:'Permanently removes this card and its own photos/history/memory. Other cards remain; group members are detached, not deleted.',requires_explicit_confirmation:true};
+}
 export async function deletePlant(store,a) {
+  assert(a.user_confirmed===true,'CONFIRMATION_REQUIRED','Explicit user confirmation of this exact card deletion is required.');
   assert(a.confirm_name?.length,'CONFIRMATION_REQUIRED','Type the exact plant name to confirm deletion.');
   // Resume a partially completed deletion. SQL tombstone prevents new writes and media reads meanwhile.
   const plant=await store.first('SELECT * FROM plants WHERE id=? AND user_id=?',a.plant_id,store.user.id);
   if(!plant)return {deleted:true,already_absent:true};
   assert(a.confirm_name===plant.display_name,'CONFIRMATION_REQUIRED','Plant name does not match.');
-  await store.run('UPDATE plants SET deleting=1 WHERE id=? AND user_id=?',plant.id,store.user.id);
+  if(!plant.deleting){
+    const marked=await store.run('UPDATE plants SET deleting=1 WHERE id=? AND user_id=? AND display_name=? AND deleting=0 AND (SELECT revision FROM gardening_revisions WHERE user_id=?)=?',plant.id,store.user.id,a.confirm_name,store.user.id,a.expected_revision);
+    assert(marked.meta.changes===1,'CONFLICT','Data changed since deletion preview. Read a new preview and confirm the current scope.',409);
+  }
   const photos=await store.all('SELECT r2_key FROM photos WHERE plant_id=? AND user_id=?',plant.id,store.user.id);
   // R2 delete is idempotent. Keep DB rows until every object deletion succeeds; retry after a failure.
   for(let i=0;i<photos.length;i+=100)await store.env.PHOTOS.delete(photos.slice(i,i+100).map(p=>p.r2_key));

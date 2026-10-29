@@ -1,5 +1,5 @@
-/** Physical locations and onboarding state; preserve entity identity.
- * Paired groups stay in their zone. See docs/specs/gardening.md. */
+/** Groups provide shared context through one explicit membership per plant.
+ * Preserve IDs/history; guard ownership, types and revision. See docs/specs/collections.md. */
 import {assert,now,uid,instant} from './lib.js';
 import {saveFollowup,settings} from './domain.js';
 import {monitoringStatus} from './monitoring.js';
@@ -7,19 +7,28 @@ export async function collectionStatus(s){
  const row=await s.first('SELECT stage,last_user_at,checkin_id,checkin_sent_at FROM collection_onboarding WHERE user_id=?',s.user.id);
  return row||{stage:'new',last_user_at:null,checkin_id:null,checkin_sent_at:null};
 }
-export async function zones(s){return {zones:(await s.all('SELECT * FROM zones WHERE user_id=? ORDER BY display_name LIMIT 101',s.user.id)).map(x=>s.decorate('zone',x))};}
-export async function plantZone(s,id){return await s.first('SELECT z.* FROM zones z JOIN plant_zones pz ON pz.zone_id=z.id AND pz.user_id=z.user_id WHERE pz.plant_id=? AND pz.user_id=?',id,s.user.id);}
-export async function createZone(s,a){return {zone:await s.insert('zone',{display_name:a.display_name,description:a.description||'',created_at:now(),updated_at:now()},a.id)};}
-export async function updateZone(s,a){const old=await s.get('zone',a.id);return {zone:await s.change('zone',a.id,a.expected_version,{display_name:a.display_name,description:a.description??old.description})};}
-export async function assignZone(s,a){
- const card=await s.get('plant',a.plant_id);
- if(!a.clear&&card.kind==='group'){const target=await s.first('SELECT group_id FROM collection_pairs WHERE zone_id=? AND user_id=?',a.zone_id,s.user.id);assert(!target||target.group_id===card.id,'PAIR_CONFLICT','A zone contains only its paired group in this release.');}
- const paired=await s.first('SELECT zone_id FROM collection_pairs WHERE group_id=? AND user_id=?',a.plant_id,s.user.id);
- assert(!paired||(!a.clear&&a.zone_id===paired.zone_id),'PAIR_CONFLICT','A paired group must remain in its own zone. Use gardening_structure.');
- if(a.clear){assert(!a.zone_id,'ZONE_INPUT','Do not supply zone when clearing.');await s.run('DELETE FROM plant_zones WHERE plant_id=? AND user_id=?',a.plant_id,s.user.id);}
- else{assert(a.zone_id,'ZONE_INPUT','Supply zone_id.');await s.get('zone',a.zone_id);await s.run('INSERT INTO plant_zones(plant_id,user_id,zone_id) VALUES(?,?,?) ON CONFLICT(plant_id) DO UPDATE SET zone_id=excluded.zone_id WHERE plant_zones.user_id=excluded.user_id',a.plant_id,s.user.id,a.zone_id);}
- return {plant:await s.get('plant',a.plant_id),zone:await plantZone(s,a.plant_id)};
+export async function groupFor(s,id){return await s.first('SELECT g.* FROM plants g JOIN plant_groups pg ON pg.group_id=g.id AND pg.user_id=g.user_id WHERE pg.plant_id=? AND pg.user_id=? AND g.deleting=0',id,s.user.id);}
+export async function groupStructure(s){
+ const plants=await s.all('SELECT id,display_name,kind,version FROM plants WHERE user_id=? AND deleting=0 ORDER BY id LIMIT 501',s.user.id);
+ assert(plants.length<=500,'COLLECTION_TOO_LARGE','Read a complete collection before changing structure.');
+ return {plants,memberships:await s.all('SELECT plant_id,group_id FROM plant_groups WHERE user_id=? ORDER BY plant_id',s.user.id)};
 }
+export function structureStatements(s,data,assignments=[],typeChanges=[]){
+ const cards=new Map(data.plants.map(p=>[p.id,{...p}])),links=new Map(data.memberships.map(x=>[x.plant_id,x.group_id])),seen=new Set(),ops=[];
+ for(const a of assignments){assert(!seen.has(a.plant_id),'DUPLICATE_ASSIGNMENT','Card assigned twice.');seen.add(a.plant_id);assert(cards.has(a.plant_id),'NOT_FOUND','Card not found.',404);assert(a.clear?!a.group_id:!!a.group_id,'GROUP_INPUT','Supply group_id or clear=true, not both.');if(a.clear)links.delete(a.plant_id);else links.set(a.plant_id,a.group_id);ops.push(s.stmt('DELETE FROM plant_groups WHERE plant_id=? AND user_id=?',a.plant_id,s.user.id));}
+ seen.clear();for(const t of typeChanges){assert(!seen.has(t.plant_id),'DUPLICATE_TYPE','Card type changed twice.');seen.add(t.plant_id);assert(cards.has(t.plant_id),'NOT_FOUND','Card not found.',404);assert(['plant','group'].includes(t.kind),'BAD_TYPE','Only plant or group.');cards.get(t.plant_id).kind=t.kind;}
+ for(const [plantId,groupId] of links){assert(cards.get(plantId)?.kind==='plant'&&cards.get(groupId)?.kind==='group'&&plantId!==groupId,'GROUP_INTEGRITY','Resulting membership must link a plant to a group. Explicitly clear or reassign affected members before changing type.',409);}
+ for(const t of typeChanges)ops.push(s.stmt('UPDATE plants SET kind=?,version=version+1,updated_at=? WHERE id=? AND user_id=? AND deleting=0',t.kind,now(),t.plant_id,s.user.id));
+ for(const a of assignments)if(!a.clear)ops.push(s.stmt('INSERT INTO plant_groups(plant_id,user_id,group_id) VALUES(?,?,?)',a.plant_id,s.user.id,a.group_id));
+ return ops;
+}
+async function changeStructure(s,a,assignments,typeChanges){
+ const data=await groupStructure(s),ops=structureStatements(s,data,assignments,typeChanges),id=uid();
+ try{await s.db.batch([s.stmt('INSERT INTO gardening_assertions(id,valid) VALUES(?,(SELECT revision=? FROM gardening_revisions WHERE user_id=?))',id,a.expected_revision,s.user.id),...ops,s.stmt('DELETE FROM gardening_assertions WHERE id=?',id)]);}catch(e){if(/gardening_assertions|valid=1/.test(e.message))assert(false,'CONFLICT','Collection changed; reload its revision.',409);throw e;}
+ return {plant:await s.get('plant',a.plant_id),group:await groupFor(s,a.plant_id),revision:(await s.first('SELECT revision FROM gardening_revisions WHERE user_id=?',s.user.id)).revision};
+}
+export async function assignGroup(s,a){return changeStructure(s,a,[a],[]);}
+export async function changeType(s,a){return changeStructure(s,a,a.clear_membership?[{plant_id:a.plant_id,clear:true}]:[],[{plant_id:a.plant_id,kind:a.kind}]);}
 export async function namePlant(s,a){return {plant:await s.change('plant',a.id,a.expected_version,{display_name:a.display_name,name_source:a.source,name_confirmed:a.source==='user'?1:0})};}
 export async function recordCollection(s,a){
  const old=await collectionStatus(s),stamp=now();
@@ -48,7 +57,7 @@ export async function scheduleCollectionCheckin(s,a){
  const zone=(await settings(s)).timezone;
  const due=nextDaytime(new Date(Math.max(Date.parse(state.last_user_at)+86400000,Date.now()+60000)).toISOString(),zone);
  const id=uid();
- const result=await saveFollowup(s,{id,plant_id:a.plant_id,type:'ASK_STATUS',context:'Однократно вернись к последнему вопросу об уходе. Если вопрос уже решён, мягко предложи рассказать о растениях и их расположении по зонам. Не повторяй при молчании; сначала проверь свежие сообщения и ночное время.',due_at:due});
+ const result=await saveFollowup(s,{id,plant_id:a.plant_id,type:'ASK_STATUS',context:'Однократно вернись к последнему вопросу об уходе. Если вопрос уже решён, мягко предложи рассказать о растениях и их группах и расположении. Не повторяй при молчании; сначала проверь свежие сообщения и ночное время.',due_at:due});
  // Race-safe single winner; cancel the redundant check if another invocation won.
  const r=await s.run('UPDATE collection_onboarding SET checkin_id=?,updated_at=? WHERE user_id=? AND checkin_id IS NULL',id,now(),s.user.id);
  if(!r.meta?.changes)await s.run("UPDATE followups SET status='CANCELLED' WHERE id=? AND user_id=?",id,s.user.id);

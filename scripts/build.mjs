@@ -10,4 +10,7 @@ let html=await read('public/index.html');
 const css=await read('public/style.css'),js=await read('public/app.js');
 html=html.replace('<link rel="stylesheet" href="/style.css">',`<style>${css}</style>`).replace('<script type="module" src="/app.js"></script>',`<script type="module">${js.replaceAll('</script','<\\/script')}</script>`);
 await fs.writeFile(new URL('public/widget.html',root),html);
-console.log('Built widget.html + static skill resource (no package downloads).');
+const assets={};
+for(const [file,type] of [['index.html','text/html;charset=utf-8'],['app.js','text/javascript;charset=utf-8'],['style.css','text/css;charset=utf-8'],['widget.html','text/html;charset=utf-8']])assets['/'+file]={type,body:await read('public/'+file)};
+await fs.writeFile(new URL('src/generated-assets.js',root),`// Generated public allowlist by npm run build; do not edit.\nexport const PUBLIC_ASSETS=${JSON.stringify(assets)};\n`);
+console.log('Built widget.html, bundled public assets and static skill resource (no package downloads).');

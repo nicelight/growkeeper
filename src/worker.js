@@ -1,3 +1,5 @@
+/** Authenticated routing and security headers; bundled UI and Worker share a release. */
+import {assetResponse} from './assets.js';
 import {productPage,PRODUCT_CSS} from './pages.js';
 import {VERSION} from './version.js';
 import {AppError,assert,json,readJSON,boundedBody,origin,uid} from './lib.js';
@@ -48,8 +50,8 @@ export default {
     const isPage=url.pathname==='/'||url.pathname==='/settings'||/^\/(entity|plant)\/[a-z0-9/-]+$/.test(url.pathname);
     if(isPage){
      try{await authenticate(request,env,true);}catch(e){if(e.status!==401)throw e;response=url.pathname==='/'?productPage('/',request.method):new Response(null,{status:303,headers:{location:'/login?return_to='+encodeURIComponent(url.pathname)}});}
-     if(!response)response=await env.ASSETS.fetch(new Request(base+'/index.html',{method:request.method}));
-    }else if(['/style.css','/app.js','/widget.html','/favicon.svg'].includes(url.pathname))response=await env.ASSETS.fetch(request);
+     if(!response)response=await assetResponse(new Request(base+'/index.html',{method:request.method}),env);
+    }else if(['/style.css','/app.js','/widget.html','/favicon.svg'].includes(url.pathname))response=await assetResponse(request,env);
     else throw new AppError('NOT_FOUND','Not found.',404);
    }
   }catch(error){

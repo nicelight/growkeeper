@@ -1,6 +1,6 @@
-# GrowKeeper — схемы реализации v0.2.0
+# GrowKeeper — схемы реализации
 
-Исходники находятся в `diagrams/*.mmd`. Генерация этого документа: `npm run diagrams`. Проверка структуры выполняется в `npm run check`; полноценный Mermaid renderer в этой сборочной среде не запускался.
+Исходники находятся в `docs/diagrams/*.mmd`. Генерация этого документа: `npm run diagrams`. Проверка структуры выполняется в `npm run check`; полноценный Mermaid renderer в этой сборочной среде не запускался.
 
 ## 01-architecture
 
@@ -16,7 +16,7 @@ flowchart TD
         MCP --> Tools["Единый каталог tools + schemas"]
         API --> Tools
         Tools --> Domain["Доменная логика\nВладелец, связи, версии, переходы"]
-        Cron["Cron: каждые 15 минут"] --> Delivery["Optional event dispatcher\nLease + signature + retries"]
+        Cron["Cron: настроенное расписание"] --> Delivery["Optional event dispatcher\nLease + signature + retries"]
     end
     Domain --> DB[("D1: состояние + auth + journal")]
     Domain --> R2[("R2: приватные оригиналы")]
@@ -94,6 +94,9 @@ flowchart TD
 ```mermaid
 erDiagram
     USERS ||--o{ PLANTS : owns
+    PLANTS ||--o| PLANT_GROUPS : plant_membership
+    PLANTS ||--o{ PLANT_GROUPS : group_members
+    PLANTS ||--o{ CARD_MEMORY_VERSIONS : summarizes
     USERS ||--o{ INPUTS : owns
     USERS ||--o| USER_SETTINGS : configures
     PLANTS o|--o{ INPUTS : resolves
@@ -130,6 +133,18 @@ erDiagram
         boolean name_confirmed
         integer version
         boolean deleting
+    }
+    PLANT_GROUPS {
+        text plant_id PK,FK
+        text user_id FK
+        text group_id FK
+    }
+    CARD_MEMORY_VERSIONS {
+        text id PK
+        text plant_id FK
+        text user_id FK
+        text content
+        integer source_revision
     }
     INPUTS {
         text id PK
@@ -299,7 +314,7 @@ sequenceDiagram
     H-->>W: 2xx + echo challenge
     W->>D: Одна зашифрованная subscription с expiry
     W-->>H: subscription ID + refreshBefore
-    T->>W: Каждые 15 минут
+    T->>W: По настроенному расписанию
     W->>D: Due PENDING + active subscription + lease
     D-->>W: Контекст plant/followup
     W->>H: Signed event с постоянным eventId

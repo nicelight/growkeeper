@@ -10,7 +10,7 @@ sequenceDiagram
     H-->>W: 2xx + echo challenge
     W->>D: Одна зашифрованная subscription с expiry
     W-->>H: subscription ID + refreshBefore
-    T->>W: Каждые 15 минут
+    T->>W: По настроенному расписанию
     W->>D: Due PENDING + active subscription + lease
     D-->>W: Контекст plant/followup
     W->>H: Signed event с постоянным eventId

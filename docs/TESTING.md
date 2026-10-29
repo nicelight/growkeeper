@@ -24,7 +24,7 @@
 | Подписки | Владелец, expiry, inactive user, одна подписка, secret rotation и bounded dual-sign window |
 | OAuth | PKCE, replay, resource/client, exact redirect, deny/issuer, refresh rotation, revoke |
 | MCP | Legacy initialize, modern discover/meta/headers, malformed JSON, tools/schema annotations, actual image content, Skill digest |
-| Удаление | Exact-name confirmation, D1 cascade + R2, failed-delete tombstone и возобновление |
+| Удаление | Предпросмотр, explicit user_confirmed + точное имя/ревизия, D1 cascade + R2, tombstone/повтор; участники группы сохраняются |
 
 ## Команды
 
@@ -55,3 +55,15 @@ python3 scripts/browser-live.py
 Cloudflare account/Workers runtime/реальная D1/R2, Wrangler dry-run и лимиты CPU/memory; реальный OAuth flow в ChatGPT; attachment URL domains и import; Skills discovery конкретного клиента; встроенный host bridge и переход по entity link; native event subscribe/refresh/delivery/unsubscribe; точность распознавания растений и многофакторная динамика болезни; нагрузка, большие фото, browser login/API E2E и security audit.
 
 Интеграционные mock-тесты доказывают корректность механики для проверенных сценариев, но не работоспособность всех внешних сервисов. Детальный checklist — в конце `RUNBOOK.md`.
+
+## Контракты групп и перехода
+
+- Миграция 0008 сохраняет ID/историю при bed→plant и отказывается удалять непустые таблицы зон; цепочка миграций проверяется целиком.
+- Принадлежность только plant→group одного владельца, максимум одна группа; stale revision не перезаписывает связи.
+- get_case_file возвращает отдельный group_context с памятью и признаками усечения; чужие группы не читаются.
+- Смена типа не создаёт дубликат и не теряет фото/наблюдения. Для группы с участниками судьба связей должна быть явной.
+- Новое содержимое после deletion preview блокирует удаление до свежего согласования; R2-сбой оставляет возобновляемый tombstone.
+- Старые plans возвращают MODEL_CHANGED. Отсутствие формального names_reviewed/фиксированного числа вопросов не мешает валидному gardening.
+- Каталог, Skill, MCP instructions и UI используют одну модель; bundled-assets проверяются с неработающим старым ASSETS, включая HEAD/auth/CSP и MCP widget.
+
+Это набор проверяемых контрактов, не заявление о прохождении всех проверок. Результаты конкретного запуска и ограничения live-проверки фиксируются при выпуске.

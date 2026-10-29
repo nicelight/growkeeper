@@ -1,5 +1,8 @@
 erDiagram
     USERS ||--o{ PLANTS : owns
+    PLANTS ||--o| PLANT_GROUPS : plant_membership
+    PLANTS ||--o{ PLANT_GROUPS : group_members
+    PLANTS ||--o{ CARD_MEMORY_VERSIONS : summarizes
     USERS ||--o{ INPUTS : owns
     USERS ||--o| USER_SETTINGS : configures
     PLANTS o|--o{ INPUTS : resolves
@@ -36,6 +39,18 @@ erDiagram
         boolean name_confirmed
         integer version
         boolean deleting
+    }
+    PLANT_GROUPS {
+        text plant_id PK,FK
+        text user_id FK
+        text group_id FK
+    }
+    CARD_MEMORY_VERSIONS {
+        text id PK
+        text plant_id FK
+        text user_id FK
+        text content
+        integer source_revision
     }
     INPUTS {
         text id PK

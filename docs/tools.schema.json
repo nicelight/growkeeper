@@ -1,80 +1,7 @@
 [
   {
-    "name": "create_collection",
-    "description": "Create one matching zone + group for a user-described place or plant set, atomically. Keep unknown physical location explicit. Reuse existing IDs; never substitute a shelf with only a group. Assign individual cards to returned zone. Existing structure repair uses gardening_structure.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "zone_id": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        },
-        "group_id": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        },
-        "display_name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 100
-        },
-        "description": {
-          "type": "string",
-          "minLength": 0,
-          "maxLength": 12000
-        },
-        "user_confirmed": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "zone_id",
-        "group_id",
-        "display_name",
-        "user_confirmed"
-      ],
-      "additionalProperties": false
-    },
-    "title": "create collection",
-    "annotations": {
-      "readOnlyHint": false,
-      "destructiveHint": false,
-      "idempotentHint": false,
-      "openWorldHint": false
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "ok": {
-          "type": "boolean"
-        },
-        "data": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "error": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "required": [
-        "ok"
-      ],
-      "additionalProperties": false
-    },
-    "_meta": {
-      "ui": {
-        "visibility": [
-          "model",
-          "app"
-        ]
-      },
-      "openai/widgetAccessible": true
-    }
-  },
-  {
     "name": "gardening_card",
-    "description": "Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Check names of card, shelf/zone and group; propose missing names and get approval. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion.",
+    "description": "Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Consider missing card/group names and propose them when useful. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -175,8 +102,7 @@
               "type": {
                 "type": "string",
                 "enum": [
-                  "plant",
-                  "zone"
+                  "plant"
                 ]
               },
               "id": {
@@ -198,13 +124,7 @@
           },
           "maxItems": 100
         },
-        "user_consented": {
-          "type": "boolean"
-        },
         "user_confirmed": {
-          "type": "boolean"
-        },
-        "names_reviewed": {
           "type": "boolean"
         },
         "memory_id": {
@@ -267,7 +187,7 @@
   },
   {
     "name": "gardening_structure",
-    "description": "Inspect structure; if inconsistent offer optimization. After consent ask 1–2 main questions, confirm assumptions and missing names, then prepare a proposal. Apply only the exact user-approved stored plan. Pairs and assignments preserve IDs/history; no deletes, nesting or cross-zone groups.",
+    "description": "Read or optimize groups and plant membership without replacing history. Prepare an exact atomic proposal, then apply after agreement. Questions and proposed missing names depend on context, not a fixed script.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -289,39 +209,6 @@
           "minimum": 0,
           "maximum": 9007199254740991
         },
-        "pairs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "zone_id": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-              },
-              "group_id": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-              },
-              "display_name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 100
-              },
-              "description": {
-                "type": "string",
-                "minLength": 0,
-                "maxLength": 12000
-              }
-            },
-            "required": [
-              "zone_id",
-              "group_id",
-              "display_name"
-            ],
-            "additionalProperties": false
-          },
-          "maxItems": 50
-        },
         "assignments": {
           "type": "array",
           "items": {
@@ -331,14 +218,41 @@
                 "type": "string",
                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
               },
-              "zone_id": {
+              "group_id": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "clear": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "plant_id"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "type_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "plant_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "plant",
+                  "group"
+                ]
               }
             },
             "required": [
               "plant_id",
-              "zone_id"
+              "kind"
             ],
             "additionalProperties": false
           },
@@ -352,8 +266,7 @@
               "type": {
                 "type": "string",
                 "enum": [
-                  "plant",
-                  "zone"
+                  "plant"
                 ]
               },
               "id": {
@@ -375,45 +288,12 @@
           },
           "maxItems": 100
         },
-        "answers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "question": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 1000
-              },
-              "answer": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 2000
-              }
-            },
-            "required": [
-              "question",
-              "answer"
-            ],
-            "additionalProperties": false
-          },
-          "maxItems": 2
-        },
         "agreed_understanding": {
           "type": "string",
           "minLength": 1,
           "maxLength": 4000
         },
-        "user_consented": {
-          "type": "boolean"
-        },
         "user_confirmed": {
-          "type": "boolean"
-        },
-        "names_reviewed": {
-          "type": "boolean"
-        },
-        "assumptions_confirmed": {
           "type": "boolean"
         }
       },
@@ -987,142 +867,8 @@
     }
   },
   {
-    "name": "create_zone",
-    "description": "Create a user-described physical area, e.g. balcony or upper shelf. Flat zones, no invented hierarchy.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        },
-        "display_name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 160
-        },
-        "description": {
-          "type": "string",
-          "minLength": 0,
-          "maxLength": 12000
-        }
-      },
-      "required": [
-        "id",
-        "display_name"
-      ],
-      "additionalProperties": false
-    },
-    "title": "create zone",
-    "annotations": {
-      "readOnlyHint": false,
-      "destructiveHint": false,
-      "idempotentHint": false,
-      "openWorldHint": false
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "ok": {
-          "type": "boolean"
-        },
-        "data": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "error": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "required": [
-        "ok"
-      ],
-      "additionalProperties": false
-    },
-    "_meta": {
-      "ui": {
-        "visibility": [
-          "model",
-          "app"
-        ]
-      },
-      "openai/widgetAccessible": true
-    }
-  },
-  {
-    "name": "update_zone",
-    "description": "Rename or describe a known zone; preserve its identity.",
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-        },
-        "expected_version": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 1000000
-        },
-        "display_name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 160
-        },
-        "description": {
-          "type": "string",
-          "minLength": 0,
-          "maxLength": 12000
-        }
-      },
-      "required": [
-        "id",
-        "expected_version",
-        "display_name"
-      ],
-      "additionalProperties": false
-    },
-    "title": "update zone",
-    "annotations": {
-      "readOnlyHint": false,
-      "destructiveHint": false,
-      "idempotentHint": false,
-      "openWorldHint": false
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "ok": {
-          "type": "boolean"
-        },
-        "data": {
-          "type": "object",
-          "additionalProperties": true
-        },
-        "error": {
-          "type": "object",
-          "additionalProperties": true
-        }
-      },
-      "required": [
-        "ok"
-      ],
-      "additionalProperties": false
-    },
-    "_meta": {
-      "ui": {
-        "visibility": [
-          "model",
-          "app"
-        ]
-      },
-      "openai/widgetAccessible": true
-    }
-  },
-  {
-    "name": "assign_plant_zone",
-    "description": "Assign an existing plant, bed or group to a user-described zone. clear=true removes only the location link.",
+    "name": "assign_plant_group",
+    "description": "Assign a plant to one group, or explicitly clear membership. Get expected_revision from get_plants or gardening_structure inspect. Does not copy history.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1130,20 +876,96 @@
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
-        "zone_id": {
+        "group_id": {
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "clear": {
           "type": "boolean"
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       },
       "required": [
-        "plant_id"
+        "plant_id",
+        "expected_revision"
       ],
       "additionalProperties": false
     },
-    "title": "assign plant zone",
+    "title": "assign plant group",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "change_plant_type",
+    "description": "Change plant/group type preserving ID, photos and history. For plant to group explicitly clear its membership if present. For group with members first reassign/clear members or use one gardening_structure plan.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "plant",
+            "group"
+          ]
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "clear_membership": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "plant_id",
+        "kind",
+        "expected_revision"
+      ],
+      "additionalProperties": false
+    },
+    "title": "change plant type",
     "annotations": {
       "readOnlyHint": false,
       "destructiveHint": false,
@@ -1182,7 +1004,7 @@
   },
   {
     "name": "name_plant",
-    "description": "Name or rename a plant/bed/group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity.",
+    "description": "Name or rename a plant or group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1377,7 +1199,7 @@
   },
   {
     "name": "create_plant",
-    "description": "Create a plant/bed/group. Offer one funny name; mark name_confirmed only when accepted. Reuse id on retry.",
+    "description": "Create a plant or group. Offer one funny name; mark name_confirmed only when accepted. Reuse id on retry.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -1404,7 +1226,6 @@
           "type": "string",
           "enum": [
             "plant",
-            "bed",
             "group"
           ]
         },
@@ -3293,7 +3114,6 @@
         "type": {
           "type": "string",
           "enum": [
-            "zone",
             "plant",
             "input",
             "photo",
@@ -3354,8 +3174,61 @@
     }
   },
   {
+    "name": "preview_delete_plant",
+    "description": "Read exact card, version and counts before permanent deletion. Ask the user to explicitly confirm this target and scope. Does not delete anything.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "plant_id"
+      ],
+      "additionalProperties": false
+    },
+    "title": "preview delete plant",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
     "name": "delete_plant",
-    "description": "Permanently delete a plant and its photos/history. Destructive: require explicit request and exact plant name. Retry resumes incomplete object deletion.",
+    "description": "Permanently delete exactly the card and own history/photos shown in preview_delete_plant, only after explicit user confirmation. Other cards remain. Use expected_revision from preview; conflict requires a fresh preview and confirmation. Retry resumes an incomplete R2 deletion.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -3367,11 +3240,21 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 100
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "user_confirmed": {
+          "type": "boolean"
         }
       },
       "required": [
         "plant_id",
-        "confirm_name"
+        "confirm_name",
+        "expected_revision",
+        "user_confirmed"
       ],
       "additionalProperties": false
     },
@@ -3405,6 +3288,7 @@
     "_meta": {
       "ui": {
         "visibility": [
+          "model",
           "app"
         ]
       },
@@ -3420,7 +3304,6 @@
         "type": {
           "type": "string",
           "enum": [
-            "zone",
             "plant",
             "input",
             "photo",

@@ -224,7 +224,7 @@ npx wrangler@4 d1 execute growkeeper --remote --command \
 | `OBJECT_MISSING` | Сверить R2 и D1, восстановить оригинал из backup; описания не заменяют фото. |
 | `IMAGE_BUDGET` | Запросить меньше кадров; 16 MiB суммарно за вызов и до 4 фото. |
 | Не приходит напоминание | Проверить EVENTS_ENABLED, подписку, expiry, due_at, backoff, callback и сообщение в чате по отдельности. |
-| Удаление зависло | Найти plant с deleting=1, исправить доступ к R2, повторить delete_plant с точным именем. |
+| Удаление зависло | Найти plant с deleting=1, исправить доступ к R2, повторить ту же подтверждённую delete_plant с точным именем и user_confirmed. |
 
 Если после восьми неудач доставка поставлена на паузу, сначала устранить причину и проверить/пересоздать подписку, затем через `update_followup` задать новый due_at со свежим expected_version. Не считать PENDING провалом агрономического эксперимента.
 
@@ -272,18 +272,20 @@ Apply `0002_monitoring_prompt.sql` before deploying code that reads monitoring s
 
 Apply `0003_shortcut_offer.sql` once before deploying shortcut-offer code (normally via D1 migrations). It adds nullable `shortcut_offered_at`; never records installation or changes subscription state.
 
-Apply `0004_collection_onboarding.sql` before collection-aware code. Additive/idempotent tables store flat zones, plant-zone links and one onboarding check-in. Only tool-recorded real user activity is visible to the Worker; the host must check fresh messages before proactive outreach. Zone management is currently through chat tools, not a separate UI editor.
+`0004_collection_onboarding.sql` — историческая миграция зон и onboarding; сохраняется в цепочке миграций. Текущая `0008` убирает пустые таблицы зон. Worker видит только записанную инструментами активность, поэтому перед обращением хост проверяет свежий чат.
 
 ## Developer feedback
 Apply 0005_feedback.sql before feedback code. Configure FEEDBACK_BOT_TOKEN as a Cloudflare secret, never in Git; set FEEDBACK_CHAT_ID to the verified developer's numeric private chat ID after they start the bot. Until both are configured, sending is disabled. Never claim human receipt/read; only Telegram API acceptance is confirmed. Do not retry unknown outcomes or create replacement IDs. No token-bearing URL or report body logging. Reports are limited to five per account per rolling day.
 
 
-## GrowKeeper 0.5: paired collections and gardening
+## Текущая модель: группы и растения
 
-Apply `migrations/0007_gardening.sql` once through the migration ledger before deploying 0.5. It adds only empty pairing/plan/memory tables and revision counters; it does not reclassify existing shelves or move user history. Preserve all existing bindings, secrets, OAuth settings and the configured cron cadence.
+Применять миграции по порядку через ledger. `0007_gardening.sql` добавляет память/планы/ревизии; `0008` переводит `bed` в `plant` с сохранением ID и добавляет прямые связи с группой. Перед удалением таблиц зон она атомарно проверяет, что zones, plant_zones и collection_pairs пусты. Если проверка не прошла, остановиться: не очищать таблицы и не обходить guard; нужен отдельно согласованный перенос. Успешная проверка production ранее не заменяет guard в миграции. Архив зон и слой совместимости не создаются.
 
-After deployment, check the authenticated MCP `tools/list` response for `create_zone`, `assign_plant_zone`, `create_collection`, `gardening_card`, `gardening_structure`, and `get_capabilities`. These are model-visible tools. If the server advertises them but the connected ChatGPT app does not, its imported catalog is stale: refresh/update the app connection using the host's available UI, then verify from a new conversation. Do not emulate missing zone tools by creating group-only shelves. Server deployment alone does not prove the host refreshed its catalog.
+Сохранить bindings, секреты, OAuth и текущий cron. До публикации: `npm run verify`, миграция и smoke на копии, затем GitHub → deployment. `npm run build` встраивает UI в Worker, поэтому новый bundle содержит и новые инструменты, и интерфейс. ASSETS binding сохраняется для разрешённого fallback; отдельно заливать обновлённые четыре встроенных файла не требуется.
 
-Existing structure repair begins with an offer and user consent, then 1–2 questions and confirmation of assumptions. `gardening_structure` inspect/prepare/plan/apply keeps original card IDs and history. It supports pairing and reassignment, not destructive merges. `gardening_card` inspect/prepare/plan/apply stores sourced derived memory; versions/version/prepare_restore retain audit history. Source snapshots are returned only for an explicit version read, not routine case context.
+После deployment проверить model-visible `assign_plant_group`, `change_plant_type`, `preview_delete_plant`, `delete_plant`, `gardening_card`, `gardening_structure` и `get_capabilities`. Zone-инструменты должны отсутствовать. Если ChatGPT видит старый каталог, Manage → Refresh tools (либо доступное обновление подключения), затем проверить новый чат. Серверный deploy сам по себе не подтверждает обновление хоста.
 
-Plans are account-scoped, expire after 24 hours, and reject intervening account data changes. A conflict requires a new read and a fresh proposal, not blind retry with a new revision. Successful apply can be replayed under the same plan ID. Memory restoration makes another version without rolling back source observations or later care actions.
+Проверить чтение растения вместе с group_context, отдельные индивидуальные исключения и ограничение истории/truncated. На тестовых карточках проверить смену типа без потери ID/фото/записей и удаление с предпросмотром/согласием; удаление группы сохраняет участников. Не использовать реальные карточки пользователя для destructive smoke.
+
+Gardening сохраняет исходные записи, хранит версии памяти и согласованные структурные планы. Вопросы — по необходимости. Планы привязаны к ревизии аккаунта; конфликт требует повторного чтения. Старый план прежней модели возвращает MODEL_CHANGED. Подготовка не является применением. Восстановление памяти создаёт новую версию, не откатывая историю ухода.
