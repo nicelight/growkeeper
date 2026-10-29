@@ -1,3 +1,5 @@
+/** Physical locations and onboarding state; preserve entity identity.
+ * Paired groups stay in their zone. See docs/specs/gardening.md. */
 import {assert,now,uid,instant} from './lib.js';
 import {saveFollowup,settings} from './domain.js';
 import {monitoringStatus} from './monitoring.js';
@@ -10,7 +12,10 @@ export async function plantZone(s,id){return await s.first('SELECT z.* FROM zone
 export async function createZone(s,a){return {zone:await s.insert('zone',{display_name:a.display_name,description:a.description||'',created_at:now(),updated_at:now()},a.id)};}
 export async function updateZone(s,a){const old=await s.get('zone',a.id);return {zone:await s.change('zone',a.id,a.expected_version,{display_name:a.display_name,description:a.description??old.description})};}
 export async function assignZone(s,a){
- await s.get('plant',a.plant_id);
+ const card=await s.get('plant',a.plant_id);
+ if(!a.clear&&card.kind==='group'){const target=await s.first('SELECT group_id FROM collection_pairs WHERE zone_id=? AND user_id=?',a.zone_id,s.user.id);assert(!target||target.group_id===card.id,'PAIR_CONFLICT','A zone contains only its paired group in this release.');}
+ const paired=await s.first('SELECT zone_id FROM collection_pairs WHERE group_id=? AND user_id=?',a.plant_id,s.user.id);
+ assert(!paired||(!a.clear&&a.zone_id===paired.zone_id),'PAIR_CONFLICT','A paired group must remain in its own zone. Use gardening_structure.');
  if(a.clear){assert(!a.zone_id,'ZONE_INPUT','Do not supply zone when clearing.');await s.run('DELETE FROM plant_zones WHERE plant_id=? AND user_id=?',a.plant_id,s.user.id);}
  else{assert(a.zone_id,'ZONE_INPUT','Supply zone_id.');await s.get('zone',a.zone_id);await s.run('INSERT INTO plant_zones(plant_id,user_id,zone_id) VALUES(?,?,?) ON CONFLICT(plant_id) DO UPDATE SET zone_id=excluded.zone_id WHERE plant_zones.user_id=excluded.user_id',a.plant_id,s.user.id,a.zone_id);}
  return {plant:await s.get('plant',a.plant_id),zone:await plantZone(s,a.plant_id)};

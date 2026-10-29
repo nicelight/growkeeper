@@ -1,3 +1,4 @@
+/** Account-scoped persistence and optimistic entity versions; no arbitrary table access. */
 import {assert,AppError,now,uid} from './lib.js';
 export const TABLES = Object.freeze({zone:'zones',plant:'plants',input:'inputs',photo:'photos',observation:'observations',issue:'issues',hypothesis:'hypotheses',experiment:'experiments',followup:'followups',journal:'journal_entries'});
 const PREFIX={observation:'O',issue:'I',hypothesis:'H',experiment:'E',followup:'F',journal:'J'};
@@ -58,6 +59,7 @@ export function publicError(e) {
   const msg=String(e?.message||'');
   if(msg.includes('one_active_experiment')||msg.includes('experiments.user_id, experiments.plant_id')) return new AppError('ACTIVE_EXPERIMENT','Finish the current experiment before starting another for this plant.',409);
   if(msg.includes('DERIVED_DATA_EXISTS')) return new AppError('DERIVED_DATA_EXISTS','Referenced photo assignment cannot be changed silently.',409);
+  if(msg.includes('PAIR_CONFLICT')) return new AppError('PAIR_CONFLICT','Paired group and zone links are inconsistent.',409);
   if(msg.includes('PLANT_DELETING')) return new AppError('PLANT_DELETING','Plant deletion is in progress.',409);
   if(msg.includes('WRONG_PHOTO_PLANT')) return new AppError('WRONG_PLANT','Photo references do not belong to this plant.',409);
   if(msg.includes('ISSUE_CLOSED')) return new AppError('ISSUE_CLOSED','Issue is already closed.',409);

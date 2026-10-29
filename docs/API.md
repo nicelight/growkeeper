@@ -4,10 +4,25 @@
 
 | Tool | Режим | Назначение |
 |---|---|---|
+| `create_collection` | write | Create one matching zone + group for a user-described place or plant set, atomically. Keep unknown physical location explicit. Reuse existing IDs; never substitute a shelf with only a group. Assign individual cards to returned zone. Existing structure repair uses gardening_structure. |
+| `gardening_card` | write | Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Check names of card, shelf/zone and group; propose missing names and get approval. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion. |
+| `gardening_structure` | write | Inspect structure; if inconsistent offer optimization. After consent ask 1–2 main questions, confirm assumptions and missing names, then prepare a proposal. Apply only the exact user-approved stored plan. Pairs and assignments preserve IDs/history; no deletes, nesting or cross-zone groups. |
+| `get_feedback_status` | read | Check whether developer feedback delivery is configured; returns Telegram contact. Read-only. |
+| `send_feedback` | write | Send a user-approved short review, wish, suggestion or bug report to developer @dyingseed via Telegram. First show the summary and ask consent. No full conversation, photos, credentials or unrelated private details. Reuse id on retry; uncertain/pending outcomes must not be resent under a new ID. |
+| `get_feedback_report` | read | Read status of own feedback report, never resends it. sent means Telegram accepted, not that a human read it. |
+| `get_capabilities` | read | Authoritative current GrowKeeper capabilities, limitations, release version and runtime readiness. Use whenever explaining features, checking support for a requested action, deciding how to perform it, or uncertain about plugin abilities. Read-only; not a list of all ChatGPT capabilities. |
 | `new_ids` | read | Generate UUIDs for new entities. Reuse an ID when retrying the same create, not a different create. |
 | `get_plants` | read | List plants and trusted reference photo IDs. A single existing plant is NOT proof that an incoming image is that plant. |
 | `get_settings` | read | Read recognition threshold and timezone. |
+| `get_monitoring_status` | read | Read actual subscription readiness, expiry and whether a useful opt-in offer is appropriate. Never reveals callback or signing secrets. |
+| `record_monitoring_choice` | write | Record offered only when actually offering monitoring; declined only after user refusal; reset only on user request to reconsider. Record shortcut_offered only after showing the Android home-screen suggestion; it does not mean installation. This does NOT subscribe, unsubscribe or grant consent. |
 | `set_settings` | write | Change settings only at the user’s request. Recognition score is heuristic, not a calibrated probability. |
+| `create_zone` | write | Create a user-described physical area, e.g. balcony or upper shelf. Flat zones, no invented hierarchy. |
+| `update_zone` | write | Rename or describe a known zone; preserve its identity. |
+| `assign_plant_zone` | write | Assign an existing plant, bed or group to a user-described zone. clear=true removes only the location link. |
+| `name_plant` | write | Name or rename a plant/bed/group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity. |
+| `record_collection_progress` | write | Record real user activity and onboarding progress. Answer urgent question first; asked only after asking; answered after saving described collection; declined only after refusal. Activity cancels only the pending silence check. user_message_at is the actual user message timestamp, never a background wake. |
+| `schedule_collection_checkin` | write | Schedule ONE gentle check-in after 24h silence, 08:00-22:00 user timezone, only after answering immediate question and explicit proactive-care consent plus active subscription. Link the existing plant needing care. Never invent a plant or schedule repeated onboarding nudges. |
 | `create_plant` | write | Create a plant/bed/group. Offer one funny name; mark name_confirmed only when accepted. Reuse id on retry. |
 | `update_plant` | write | Rename a plant or edit its profile after user direction. Supply the version from the current entity. |
 | `record_input` | write | Persist unassigned text before resolving its plant. One logical subject per input; split a message about different plants. |
@@ -24,7 +39,7 @@
 | `save_hypothesis` | write | Create/update a tentative explanation. Facts stay in observations. Non-ACTIVE states require a conclusion; evidence must reference observations of this plant. Update requires expected_version. |
 | `create_experiment` | write | Create a PLANNED experiment, not an action already performed. Define one change, success criteria and evaluation time. Start separately after user reports making the change. |
 | `update_experiment` | write | Start with user confirmation and actual started_at, or complete/cancel with result. Only one active experiment per plant. Completion is not proof of a causal hypothesis. |
-| `create_followup` | write | Schedule one future question/photo/check. Does not enable ChatGPT notifications by itself. One followup per useful check, not every hypothesis. |
+| `create_followup` | write | Schedule one future question/photo/check. Does not enable ChatGPT notifications by itself. One followup per useful check, not every hypothesis. Inspect returned monitoring.should_offer; if true, offer one consent-based GrowKeeper event subscription. |
 | `update_followup` | write | After the requested observation is actually processed mark DONE; CANCELLED stops it. PENDING + due_at reschedules. Sending a request is not completion. |
 | `get_due_followups` | read | Read due work. No due work means no proactive message. Reading does not acknowledge delivery. Use one opted-in host monitor or events, not both. |
 | `claim_followup` | write | For an enabled scheduled host, claim a due followup before sending. Lease prevents simultaneous cron/host delivery. Never claim merely for browsing. |

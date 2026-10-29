@@ -15,6 +15,7 @@ if(!(await DB.prepare('PRAGMA table_info(monitoring_preferences)').all()).result
 await DB.exec(await fs.readFile(path.join(root,'migrations/0004_collection_onboarding.sql'),'utf8'));
 await DB.exec(await fs.readFile(path.join(root,'migrations/0005_feedback.sql'),'utf8'));
 if(!(await DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='google_identities'").first()))await DB.exec(await fs.readFile(path.join(root,'migrations/0006_google_auth.sql'),'utf8'));
+if(!(await DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gardening_revisions'").first()))await DB.exec(await fs.readFile(path.join(root,'migrations/0007_gardening.sql'),'utf8'));
 let config;try{config=JSON.parse(await fs.readFile(path.join(dir,'dev-secrets.json'),'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;config={APP_SECRET:randomBytes(32).toString('hex'),owner_key:'gk_'+randomToken()};await fs.writeFile(path.join(dir,'dev-secrets.json'),JSON.stringify(config),{mode:0o600});}
 let owner=await DB.prepare('SELECT id FROM users LIMIT 1').first();if(!owner){owner={id:uid()};await DB.prepare('INSERT INTO users(id,display_name,login_key_hash,created_at) VALUES(?,?,?,?)').bind(owner.id,'Локальный владелец',await hash(config.owner_key),now()).run();}
 const port=Number(process.env.PORT||8787),PUBLIC_ORIGIN=`http://127.0.0.1:${port}`;

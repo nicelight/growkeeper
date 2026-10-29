@@ -1,3 +1,5 @@
+/** Plant history and care transitions; validate ownership and observed outcomes.
+ * Derived gardening memory is separate from these source records. */
 import {assert,AppError,uid,now,after,days,instant,asObject} from './lib.js';
 import {TABLES} from './db.js';
 
@@ -219,7 +221,7 @@ export async function closeIssue(store,a) {
   return {issue:await store.get('issue',issue.id),journal_entry:await store.get('journal',journalId)};
 }
 export async function records(store,a) {
-  assert(['photo','observation','issue','hypothesis','experiment','followup','journal'].includes(a.type),'BAD_TYPE','Unsupported record list.');
+  assert(['photo','observation','issue','hypothesis','experiment','followup','journal','input'].includes(a.type),'BAD_TYPE','Unsupported record list.');
   await store.get('plant',a.plant_id);const limit=a.limit||30,offset=a.offset||0;
   const search=a.query?` AND ${a.type==='journal'?"(title LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')":a.type==='issue'?"title LIKE ? ESCAPE '\\'":"1=1"}`:'';
   const pattern=a.query?'%'+a.query.replace(/[\\%_]/g,'\\$&')+'%':null;

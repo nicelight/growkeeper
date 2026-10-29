@@ -1,5 +1,683 @@
 [
   {
+    "name": "create_collection",
+    "description": "Create one matching zone + group for a user-described place or plant set, atomically. Keep unknown physical location explicit. Reuse existing IDs; never substitute a shelf with only a group. Assign individual cards to returned zone. Existing structure repair uses gardening_structure.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "zone_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "group_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 12000
+        },
+        "user_confirmed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "zone_id",
+        "group_id",
+        "display_name",
+        "user_confirmed"
+      ],
+      "additionalProperties": false
+    },
+    "title": "create collection",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "gardening_card",
+    "description": "Inspect, prepare and apply a compact sourced memory for one card without rewriting history. Check names of card, shelf/zone and group; propose missing names and get approval. Read relevant paginated history; distinguish facts, hypotheses, plans and performed actions. Apply only exact approved plan; concurrent changes reject it. Restore creates a new version, not deletion.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "inspect",
+            "prepare",
+            "apply",
+            "versions",
+            "version",
+            "plan",
+            "prepare_restore"
+          ]
+        },
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "current_fact",
+                  "hypothesis",
+                  "planned_action",
+                  "performed_action",
+                  "outcome",
+                  "unknown",
+                  "historical"
+                ]
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "plant",
+                        "input",
+                        "photo",
+                        "observation",
+                        "issue",
+                        "hypothesis",
+                        "experiment",
+                        "followup",
+                        "journal"
+                      ]
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "kind",
+              "text",
+              "sources"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 40
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "plant",
+                  "zone"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "display_name"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "user_consented": {
+          "type": "boolean"
+        },
+        "user_confirmed": {
+          "type": "boolean"
+        },
+        "names_reviewed": {
+          "type": "boolean"
+        },
+        "memory_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
+      },
+      "required": [
+        "action",
+        "plant_id"
+      ],
+      "additionalProperties": false
+    },
+    "title": "gardening card",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "gardening_structure",
+    "description": "Inspect structure; if inconsistent offer optimization. After consent ask 1–2 main questions, confirm assumptions and missing names, then prepare a proposal. Apply only the exact user-approved stored plan. Pairs and assignments preserve IDs/history; no deletes, nesting or cross-zone groups.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "inspect",
+            "prepare",
+            "apply",
+            "plan"
+          ]
+        },
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "zone_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "group_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "description": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 12000
+              }
+            },
+            "required": [
+              "zone_id",
+              "group_id",
+              "display_name"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 50
+        },
+        "assignments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "plant_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "zone_id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              }
+            },
+            "required": [
+              "plant_id",
+              "zone_id"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "plant",
+                  "zone"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "type",
+              "id",
+              "display_name"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 100
+        },
+        "answers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "answer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "question",
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 2
+        },
+        "agreed_understanding": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "user_consented": {
+          "type": "boolean"
+        },
+        "user_confirmed": {
+          "type": "boolean"
+        },
+        "names_reviewed": {
+          "type": "boolean"
+        },
+        "assumptions_confirmed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "title": "gardening structure",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "get_feedback_status",
+    "description": "Check whether developer feedback delivery is configured; returns Telegram contact. Read-only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "title": "get feedback status",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "send_feedback",
+    "description": "Send a user-approved short review, wish, suggestion or bug report to developer @dyingseed via Telegram. First show the summary and ask consent. No full conversation, photos, credentials or unrelated private details. Reuse id on retry; uncertain/pending outcomes must not be resent under a new ID.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "review",
+            "wish",
+            "suggestion",
+            "bug"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2500
+        },
+        "user_consented": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "summary",
+        "user_consented"
+      ],
+      "additionalProperties": false
+    },
+    "title": "send feedback",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "get_feedback_report",
+    "description": "Read status of own feedback report, never resends it. sent means Telegram accepted, not that a human read it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "title": "get feedback report",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "get_capabilities",
+    "description": "Authoritative current GrowKeeper capabilities, limitations, release version and runtime readiness. Use whenever explaining features, checking support for a requested action, deciding how to perform it, or uncertain about plugin abilities. Read-only; not a list of all ChatGPT capabilities.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "title": "get capabilities",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
     "name": "new_ids",
     "description": "Generate UUIDs for new entities. Reuse an ID when retrying the same create, not a different create.",
     "inputSchema": {
@@ -145,6 +823,110 @@
     }
   },
   {
+    "name": "get_monitoring_status",
+    "description": "Read actual subscription readiness, expiry and whether a useful opt-in offer is appropriate. Never reveals callback or signing secrets.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "title": "get monitoring status",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "record_monitoring_choice",
+    "description": "Record offered only when actually offering monitoring; declined only after user refusal; reset only on user request to reconsider. Record shortcut_offered only after showing the Android home-screen suggestion; it does not mean installation. This does NOT subscribe, unsubscribe or grant consent.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "choice": {
+          "type": "string",
+          "enum": [
+            "offered",
+            "declined",
+            "reset",
+            "shortcut_offered"
+          ]
+        }
+      },
+      "required": [
+        "choice"
+      ],
+      "additionalProperties": false
+    },
+    "title": "record monitoring choice",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
     "name": "set_settings",
     "description": "Change settings only at the user’s request. Recognition score is heuristic, not a calibrated probability.",
     "inputSchema": {
@@ -168,6 +950,395 @@
       "additionalProperties": false
     },
     "title": "set settings",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "create_zone",
+    "description": "Create a user-described physical area, e.g. balcony or upper shelf. Flat zones, no invented hierarchy.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 12000
+        }
+      },
+      "required": [
+        "id",
+        "display_name"
+      ],
+      "additionalProperties": false
+    },
+    "title": "create zone",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "update_zone",
+    "description": "Rename or describe a known zone; preserve its identity.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 12000
+        }
+      },
+      "required": [
+        "id",
+        "expected_version",
+        "display_name"
+      ],
+      "additionalProperties": false
+    },
+    "title": "update zone",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "assign_plant_zone",
+    "description": "Assign an existing plant, bed or group to a user-described zone. clear=true removes only the location link.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "zone_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "clear": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "plant_id"
+      ],
+      "additionalProperties": false
+    },
+    "title": "assign plant zone",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "name_plant",
+    "description": "Name or rename a plant/bed/group without changing its profile or identity. On first photos use one wholesome funny generated name if none chosen by user. Generated names are usable immediately, never proof of visual identity.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "display_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "generated",
+            "user"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "expected_version",
+        "display_name",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "title": "name plant",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "record_collection_progress",
+    "description": "Record real user activity and onboarding progress. Answer urgent question first; asked only after asking; answered after saving described collection; declined only after refusal. Activity cancels only the pending silence check. user_message_at is the actual user message timestamp, never a background wake.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "activity",
+            "help_answered",
+            "asked",
+            "answered",
+            "declined"
+          ]
+        },
+        "user_message_at": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 40
+        }
+      },
+      "required": [
+        "stage",
+        "user_message_at"
+      ],
+      "additionalProperties": false
+    },
+    "title": "record collection progress",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model",
+          "app"
+        ]
+      },
+      "openai/widgetAccessible": true
+    }
+  },
+  {
+    "name": "schedule_collection_checkin",
+    "description": "Schedule ONE gentle check-in after 24h silence, 08:00-22:00 user timezone, only after answering immediate question and explicit proactive-care consent plus active subscription. Link the existing plant needing care. Never invent a plant or schedule repeated onboarding nudges.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "plant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "user_consented": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "plant_id",
+        "user_consented"
+      ],
+      "additionalProperties": false
+    },
+    "title": "schedule collection checkin",
     "annotations": {
       "readOnlyHint": false,
       "destructiveHint": false,
@@ -1472,7 +2643,7 @@
   },
   {
     "name": "create_followup",
-    "description": "Schedule one future question/photo/check. Does not enable ChatGPT notifications by itself. One followup per useful check, not every hypothesis.",
+    "description": "Schedule one future question/photo/check. Does not enable ChatGPT notifications by itself. One followup per useful check, not every hypothesis. Inspect returned monitoring.should_offer; if true, offer one consent-based GrowKeeper event subscription.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -2050,7 +3221,8 @@
             "hypothesis",
             "experiment",
             "followup",
-            "journal"
+            "journal",
+            "input"
           ]
         },
         "limit": {
@@ -2121,6 +3293,7 @@
         "type": {
           "type": "string",
           "enum": [
+            "zone",
             "plant",
             "input",
             "photo",
@@ -2247,6 +3420,7 @@
         "type": {
           "type": "string",
           "enum": [
+            "zone",
             "plant",
             "input",
             "photo",

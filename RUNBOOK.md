@@ -276,3 +276,14 @@ Apply `0004_collection_onboarding.sql` before collection-aware code. Additive/id
 
 ## Developer feedback
 Apply 0005_feedback.sql before feedback code. Configure FEEDBACK_BOT_TOKEN as a Cloudflare secret, never in Git; set FEEDBACK_CHAT_ID to the verified developer's numeric private chat ID after they start the bot. Until both are configured, sending is disabled. Never claim human receipt/read; only Telegram API acceptance is confirmed. Do not retry unknown outcomes or create replacement IDs. No token-bearing URL or report body logging. Reports are limited to five per account per rolling day.
+
+
+## GrowKeeper 0.5: paired collections and gardening
+
+Apply `migrations/0007_gardening.sql` once through the migration ledger before deploying 0.5. It adds only empty pairing/plan/memory tables and revision counters; it does not reclassify existing shelves or move user history. Preserve all existing bindings, secrets, OAuth settings and the configured cron cadence.
+
+After deployment, check the authenticated MCP `tools/list` response for `create_zone`, `assign_plant_zone`, `create_collection`, `gardening_card`, `gardening_structure`, and `get_capabilities`. These are model-visible tools. If the server advertises them but the connected ChatGPT app does not, its imported catalog is stale: refresh/update the app connection using the host's available UI, then verify from a new conversation. Do not emulate missing zone tools by creating group-only shelves. Server deployment alone does not prove the host refreshed its catalog.
+
+Existing structure repair begins with an offer and user consent, then 1–2 questions and confirmation of assumptions. `gardening_structure` inspect/prepare/plan/apply keeps original card IDs and history. It supports pairing and reassignment, not destructive merges. `gardening_card` inspect/prepare/plan/apply stores sourced derived memory; versions/version/prepare_restore retain audit history. Source snapshots are returned only for an explicit version read, not routine case context.
+
+Plans are account-scoped, expire after 24 hours, and reject intervening account data changes. A conflict requires a new read and a fresh proposal, not blind retry with a new revision. Successful apply can be replayed under the same plan ID. Memory restoration makes another version without rolling back source observations or later care actions.
